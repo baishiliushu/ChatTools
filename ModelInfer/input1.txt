@@ -1,0 +1,12 @@
+{
+    "id": "545",
+    "reMsg_type": 1,
+    "session_id": "99",
+    "task": [
+        {
+          "task_id": "1",
+          "task_state": 2,
+          "task_subState": 3
+        }
+    ]
+}

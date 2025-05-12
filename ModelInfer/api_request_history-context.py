@@ -280,7 +280,7 @@ def main():
     response = send_request(url, HEADERS, DATA)
     t_request = print_time_length(t_start, "request", True)
     
-FISTST_WORD_INDEX = 1 # 7
+    FISTST_WORD_INDEX = 1 # 7
 
     if response.status_code == 200:
         generated_text, t_texts = process_stream_response(response)
