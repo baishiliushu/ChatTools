@@ -1,0 +1,44 @@
+# ───────── 基础 ─────────
+model_name_or_path: /data/lxy/model/Qwen2___5-1___5B-Instruct
+
+# 数据集
+dataset_dir:  /data/lxy/codes/fsdp_qlora
+train_file:   train_dataset.json
+eval_file:    test_dataset.json
+
+# 输出
+output_dir:   /data/lxy/outputs/qwen2_1.5b_qlora_ddp
+
+# ───────── 训练超参数 ─────────
+num_train_epochs: 100
+max_steps:       800
+
+per_device_train_batch_size: 1     # 2 * 2GPU * 8 累积 ≈ 32
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 4
+
+learning_rate: 0.0002
+max_seq_length: 512
+
+logging_steps: 10
+evaluation_strategy: steps
+eval_steps: 500
+save_steps: 500
+
+fp16: false      # GTX 1080 无 bfloat16
+bf16: false
+
+# ───────── LoRA 超参数 ─────────
+lora_r: 32
+lora_alpha: 16
+lora_dropout: 0.05
+
+# 建议对所有线性层插 LoRA；如需精细控制，列出具体模块名
+target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
