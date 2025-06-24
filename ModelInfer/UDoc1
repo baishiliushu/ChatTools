@@ -1,0 +1,13 @@
+        {"role": "assistant", "content": """综上所述，完整的矩阵如下所示：
+```
+2  5  10  17
+4  7  12  19
+8  11 16  23
+16 19 20  27
+```
+
+因此，空缺处的数值分别为：19, 16, 19。"""},
+        # "<think></think>{"content":"我暂时无法获取天气信息，建议您查看天气预报或相关天气应用哦！","expression":"喜悦","id":"345","session_id":"12","type":"2","times     tamp":"2025-04-0514:30:00"}"
+        #{"role": "system", "content": "**再次强调1个输出内容要求**\n1.禁止生成任何超过当前设定能力范畴的任务或者语聊回复，可以对用户表示做不到\n**再次强调2个输出格式要求**\n1.不要输出任何思考过程；2.输出内容必须全部封装进Json结构（按照SYSTEM中所设定的规则）； \n /nothink"}, #{load_cleaner_prompt()} 
+        {"role": "user", "content": f"{INPUT_CONTENT}"},
+        #{"role": "assistant", "content": ""}

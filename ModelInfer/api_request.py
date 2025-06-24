@@ -2,8 +2,8 @@ import requests
 import json
 import time
 
-#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/longlongprompt/speed.txt"
-PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
+PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt" #0414-chat.txt"
+#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
 INPUT_PATH = "./input1.txt" 
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
@@ -43,13 +43,13 @@ HEADERS = {
 
 # 构建请求体
 
-OUT_TYPE = "text" # "json_object"  # text
+OUT_TYPE = "json_object" # "json_object"  # text
 
 # 输入token长度
 DATA = {
     "model": MODEL_NAME,
     "messages": [
-        {"role": "system", "content": f"{load_cleaner_prompt()}"}, #
+        {"role": "system", "content": f"{load_cleaner_prompt()} /think"}, #
         {"role": "user", "content": f"{INPUT_CONTENT}"},
         #{"role": "assistant", "content": f""}
     ],

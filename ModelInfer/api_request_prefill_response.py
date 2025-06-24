@@ -2,8 +2,8 @@ import requests
 import json
 import time
 
-#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/longlongprompt/speed.txt"
-PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
+PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt" #0414-chat.txt"
+#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
 INPUT_PATH = "./input1.txt" 
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
@@ -22,7 +22,16 @@ def load_cleaner_prompt(path=PROMPT_PATH):
     with open(path, "r", encoding="utf-8") as f:
         return f.read().strip()
 
-
+def load_prompt_based_think(path=PROMPT_PATH, _enable_think=0):
+    print("[Status]enable_think :{}".format(_enable_think))
+    
+    s = load_cleaner_prompt(path)
+    if _enable_think == 1:
+        s = s + " /think"
+    if _enable_think == 0:
+        s = s + " /nothink"
+        
+    return s
 
 INPUT_CONTENT = "去卧室找爸爸"
 INPUT_CONTENT = load_cleaner_prompt(INPUT_PATH)
@@ -39,13 +48,13 @@ HEADERS = {
 
 # 构建请求体
 
-OUT_TYPE = "text" # "json_object"  # text
+OUT_TYPE = "json_object" # "json_object"  # text
 
 # 输入token长度
 DATA = {
     "model": MODEL_NAME,
     "messages": [
-        {"role": "system", "content": f"{load_cleaner_prompt()}"}, #{load_cleaner_prompt()} 
+        {"role": "system", "content": f"{load_prompt_based_think()}"},
         {"role": "user", "content": """农夫带着一只老虎、一只羊、一条蛇、一只鸡和一筐苹果要过河。
 
 农夫的船一次只能载农夫和一样东西过河。
@@ -173,27 +182,11 @@ find_prime_position(target) 函数：
 2  5  10  17
 4  7  12  ?
 8  11 ?  23
-16 ?  20  27"""
-
-"""
-HEADERS = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {API_KEY}'
-}
+16 ?  20  27
 
 """},
-        {"role": "assistant", "content": """综上所述，完整的矩阵如下所示：
-```
-2  5  10  17
-4  7  12  19
-8  11 16  23
-16 19 20  27
-```
+        #{"role": "assistant", "content": "{"}
 
-因此，空缺处的数值分别为：19, 16, 19。"""},
-        #{"role": "system", "content": "**再次强调1个输出内容要求**\n1.禁止生成任何超过当前设定能力范畴的任务或者语聊回复，可以对用户表示做不到\n**再次强调2个输出格式要求**\n1.不要输出任何思考过程；2.输出内容必须全部封装进Json结构（按照SYSTEM中所设定的规则）； \n /nothink"}, #{load_cleaner_prompt()} 
-        {"role": "user", "content": f"{INPUT_CONTENT}"},
-        #{"role": "assistant", "content": ""}
     ],
     #"top_k": 50,  # 控制生成文本时考虑的最高概率词汇的数量
     #"temperature": 2.0,  # 控制生成文本的随机性0.7 max 2.0
@@ -201,7 +194,7 @@ HEADERS = {
     #"presence_penalty": 0.1,  # 控制重复惩罚
     #"frequency_penalty": 0.1,  # 控制频率惩罚
     "stream": True, # 控制流式输出
-    #"response_format":{"type": f"{OUT_TYPE}"},
+    "response_format":{"type": f"{OUT_TYPE}"},
     #"enable_search": "true",          # 启用搜索增强
     #"search_options": {
     #    "forced_search": "true"       # 强制搜索（可能覆盖模型默认行为）
@@ -251,7 +244,7 @@ def process_stream_response(response):
                 if json_data == '[DONE]':
                     break
                 data = json.loads(json_data)
-                print_time_length(t_context, "json loads", False)
+                print_time_length(t_context, "json loads", True)
                 
                 choices = data.get('choices', [])
                 
@@ -261,10 +254,10 @@ def process_stream_response(response):
                     generated_text += new_text
                     
                     if new_text != "":
-                        t_text = print_time_length(t_context, "w:{}".format(new_text), False)
+                        t_text = print_time_length(t_context, "w:{}".format(new_text), True)
                         t_cnts.append(t_text)   
                     else:
-                        print_time_length(t_context, "c:{}".format(new_text), False)
+                        print_time_length(t_context, "c:{}".format(new_text), True)
     return generated_text, t_cnts
 
 
