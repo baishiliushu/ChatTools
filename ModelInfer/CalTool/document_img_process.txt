@@ -1,0 +1,4 @@
+ffmpeg -s 1920x1080 -pix_fmt nv12 -i "${nv12_file}.yuv" -pix_fmt rgb24 "../jpgs-org/${nv12_file}.jpg"
+convert a.png b.jpg
+mediainfo a.webm
+
