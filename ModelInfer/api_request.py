@@ -2,8 +2,8 @@ import requests
 import json
 import time
 
-PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt" #0414-chat.txt"
-#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
+#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt" #0414-chat.txt"
+PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
 INPUT_PATH = "./input1.txt" 
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
@@ -43,7 +43,8 @@ HEADERS = {
 
 # 构建请求体
 
-OUT_TYPE = "json_object" # "json_object"  # text
+OUT_TYPE = "json_object" 
+#OUT_TYPE = "text" 
 
 # 输入token长度
 DATA = {
@@ -59,7 +60,7 @@ DATA = {
     #"presence_penalty": 0.1,  # 控制重复惩罚
     #"frequency_penalty": 0.1,  # 控制频率惩罚
     "stream": True, # 控制流式输出
-    #"response_format":{"type": f"{OUT_TYPE}"},
+    "response_format":{"type": f"{OUT_TYPE}"},
     #"enable_search": "true",          # 启用搜索增强
     #"search_options": {
         #"forced_search": "true"       # 强制搜索（可能覆盖模型默认行为）

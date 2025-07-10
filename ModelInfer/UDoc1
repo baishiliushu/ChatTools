@@ -1,3 +1,128 @@
+----
+#pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu118
+
+python -c "import torch; print(torch.__version__); print(torch.version.cuda)" 
+ldd —version
+nvcc —version (cuda system; if not ,local PATH)
+nvidia-smi (cuda highest)
+
+pip3 install xformers==0.0.26 --index-url https://download.pytorch.org/whl/cu118
+
+pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
+
+pip cache purge
+conda clean -t
+conda clean -p
+
+https://github.com/vllm-project/vllm/releases
+vllm-0.8.5.post1+cu118-cp38-abi3-manylinux1_x86_64.whl
+https://download.pytorch.org/whl/xformers/
+https://download.pytorch.org/whl/cu118
+
+
+pip install /home/leon/mount_point_two/data-od/vllm-0.8.5.post1+cu118-cp38-abi3-manylinux1_x86_64.whl 
+Collecting xformers==0.0.29.post2 (from vllm==0.8.5.post1+cu118)
+Downloading numba-0.61.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (3.8 MB)
+Downloading torch-2.6.0-cp311-cp311-manylinux1_x86_64.whl (766.7 MB)
+Downloading xgrammar-0.1.18-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.8 MB)
+Downloading nvidia_cublas_cu12-12.4.5.8-py3-none-manylinux2014_x86_64.whl (363.4 MB)
+Downloading nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl (664.8 MB)
+Downloading nvidia_cuda_cupti_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (13.8 MB)
+Downloading nvidia_cuda_runtime_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl (883 kB)
+
+
+->https://github.com/vllm-project/vllm/blob/v0.8.5/setup.py
+->vllm-0.8.5.post1+cu118.dist-info/METADATA文件
+->vllm的issue，是否有类似的问题。例如，在https://github.com/vllm-project/vllm/issues/3777
+->修改wheel的metadata
+->安装cu11的依赖包：
+        pip install nvidia-cublas-cu11==11.10.3.66 nvidia-cuda-runtime-cu11==11.7.99 nvidia-cuda-nvrtc-cu11==11.7.99 nvidia-cudnn-cu11==8.5.0.96
+  忽略依赖（因为已经安装了）：
+        pip install --no-deps /path/to/wheel
+->vllm的构建脚本（build_wheel.py）
+
+安装完torch之后，安装vllm的时候就会检测到torch已经安装并且满足要求，就会略过torch的安装，这也是核心所在（xformers在cu118上最新的版本是0027post2）
+pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu118
+会报冲突0027post依赖的是torch240，因此修改0027post的metadata >=2.4.0，重新打包whl安装：
+pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu118
+# 修改metadata中依赖为0027post重新打zip包并重命名为whl
+cd /home/leon/mount_point_two/data-od/xformats-0027post2/vllm-0.8.5.post1+cu118-cp38-abi3-manylinux1_x86_64
+# 打包所有内容到新 WHL 文件（注意：不包含父目录）
+zip -r ../vllm-0.8.5.post1+cu118-cp38-abi3-manylinux1_x86_64.whl *
+pip install /home/leon/mount_point_two/data-od/xformats-0027post2/vllm-0.8.5.post1+cu118-cp38-abi3-manylinux1_x86_64.whl
+
+/mount_point_two/conda_envs/chat-lg/lib/python3.11/site-packages
+/home/leon/anaconda3/envs/chat-lg/lib/python3.11/site-packages/vllm/entrypoints/api_server.py
+./entrypoints/openai/protocol.py
+./engine/protocol.py
+
+----
+python -m vllm.entrypoints.openai.api_server --tensor-parallel-size 4 --dtype half --port 8000 --host 0.0.0.0 --api-key mindo --enable-prefix-caching --quantization awq --enable-auto-tool-choice --tool-call-parser hermes --model /data/Qwen/models/Qwen2.5-32B-Instruct-AWQ/ --served-model-name QwQ-32B-AWQ 2>&1 | tee "/data/tools/logs/vllm-$(date +"%y_%m_%d-%H_%M_%S").log"
+
+python -m vllm.entrypoints.openai.api_server --tensor-parallel-size 1 --dtype half --port 8000 --host 0.0.0.0 --api-key mindo --quantization awq --enable-auto-tool-choice --tool-call-parser hermes --model /home/leon/mount_point_c/LLM_models/Qwen/Qwen2.5-1.5B-Instruct-AWQ/ --served-model-name Qwen-Local-AWQ --max-model-len 8547 --max-num-seqs 1 --gpu-memory-utilization 0.55 2>&1 | tee "/home/leon/mount_point_c/vllm_local_debug/logs/vllm-$(date +"%y_%m_%d-%H_%M_%S").log"
+
+python -m vllm.entrypoints.openai.api_server --tensor-parallel-size 1 --dtype half --port 8000 --host 0.0.0.0 --api-key mindo --quantization awq --enable-auto-tool-choice --tool-call-parser hermes --model /home/leon/mount_point_c/LLM_models/Qwen/Qwen2.5-1.5B-Instruct-AWQ/ --served-model-name Qwen-Local-AWQ --max-model-len 8547 --max-num-seqs 1 --gpu-memory-utilization 0.55 2>&1 | tee "/home/leon/mount_point_c/vllm_local_debug/logs/vllm-$(date +"%y_%m_%d-%H_%M_%S").log"
+
+#3B比1.5B还要差
+python -m vllm.entrypoints.openai.api_server --tensor-parallel-size 1 --dtype half --port 8000 --host 0.0.0.0 --api-key mindo --quantization awq --enable-auto-tool-choice --tool-call-parser hermes --model /home/leon/mount_point_c/LLM_models/Qwen/Qwen2.5-3B-Instruct-AWQ/ --served-model-name Qwen-Local-AWQ --max-model-len 8547 --max-num-seqs 1 --gpu-memory-utilization 0.55 2>&1 | tee "/home/leon/mount_point_c/vllm_local_debug/logs/vllm-$(date +"%y_%m_%d-%H_%M_%S").log"
+
+#7B要比3B好
+python -m vllm.entrypoints.openai.api_server --tensor-parallel-size 1 --dtype half --port 8000 --host 0.0.0.0 --api-key mindo --quantization awq --enable-auto-tool-choice --tool-call-parser hermes --model /home/leon/mount_point_c/LLM_models/Qwen/Qwen2.5-7B-Instruct-AWQ/ --served-model-name Qwen-Local-AWQ --max-model-len 8547 --max-num-seqs 1 --gpu-memory-utilization 0.75 2>&1 | tee "/home/leon/mount_point_c/vllm_local_debug/logs/vllm-$(date +"%y_%m_%d-%H_%M_%S").log"
+
+python -m vllm.entrypoints.openai.api_server --tensor-parallel-size 1 --dtype half --port 8000 --host 0.0.0.0 --api-key mindo --quantization awq --enable-auto-tool-choice --tool-call-parser hermes --model /home/leon/mount_point_c/LLM_models/Qwen/Qwen2.5-1.5B-Instruct-AWQ/ --served-model-name Qwen-Local-AWQ --max-model-len 8547 --max-num-seqs 1 --gpu-memory-utilization 0.75 --speculative-config '{"num_speculative_tokens":3,"model":"/home/leon/mount_point_c/LLM_models/Qwen/Qwen2.5-0.5B-Instruct-AWQ/"}' 2>&1 | tee "/home/leon/mount_point_c/vllm_local_debug/logs/vllm-$(date +"%y_%m_%d-%H_%M_%S")-1.5Bprefill.log"
+
+"method":"draft_model",
+通过加载模型的配置文件（通常是config.json）来查看词汇表大小（vocab_size）
+
+ValueError: max_num_batched_tokens (2048) must be greater than or equal to max_num_seqs (15000)
+max_num_seqs
+ --max-model-len 16 --max-num-seqs 16 --gpu-memory-utilization 0.6 
+max_seq_len=32768,
+WARNING 07-03 17:05:01 [utils.py:2267] Found ulimit of 1024 and failed to automatically increase with error current limit exceeds maximum limit. This can cause fd limit errors like `OSError: [Errno 24] Too many open files`. Consider increasing with ulimit -n
+INFO 07-03 17:14:19 [kv_cache_utils.py:634] GPU KV cache size: 610,992 tokens
+RuntimeError: CUDA out of memory occurred when warming up sampler with 256 dummy requests. Please try lowering `max_num_seqs` or `gpu_memory_utilization` when initializing the engine.
+
+<|im_start|>assistant\\n{\"content\":\"
+
+---
+FOR SamplingParams.guided_decoding=GuidedDecodingParams RUNNING AS SamplingParams.guided_decoding=None
+spec_decode/draft_model_runner.py ->  model_runner_base.py -> config.py 
+
+INFO 07-07 17:37:09 [draft_model_runner.py:285] [Debug]for SamplingParams ['__abstractmethods__', '__annotations__', '__class__', '__class_getitem__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__orig_bases__', '__parameters__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__slots__', '__str__', '__subclasshook__', '__weakref__', '_abc_impl', '_add_dummy_loras', '_builder_cls', '_dummy_run', '_is_protocol', '_model_input_cls', '_prepare_model_input_tensors', '_remove_dummy_loras', '_update_inputs_to_capture_for_enc_dec_model', 'add_lora', 'add_prompt_adapter', 'attn_backend', 'attn_state', 'block_size', 'builder', 'cache_config', 'capture_model', 'device', 'device_config', 'execute_model', 'generators', 'get_generators', 'get_max_block_per_batch', 'get_model', 'graph_block_tables', 'graph_memory_pool', 'graph_runners', 'has_inner_state', 'in_profile_run', 'input_registry', 'inter_data_cache', 'is_driver_worker', 'kv_cache_dtype', 'list_loras', 'list_prompt_adapters', 'load_config', 'load_model', 'lora_config', 'lora_manager', 'make_model_input_from_broadcasted_tensor_dict', 'max_batchsize_to_capture', 'max_seq_len_to_capture', 'mm_registry', 'model', 'model_config', 'model_memory_usage', 'need_recv_kv', 'need_send_kv', 'observability_config', 'parallel_config', 'pin_lora', 'pin_memory', 'pin_prompt_adapter', 'prepare_model_input', 'profile_run', 'prompt_adapter_config', 'prompt_adapter_manager', 'remove_all_loras', 'remove_all_prompt_adapters', 'remove_lora', 'remove_prompt_adapter', 'return_hidden_states', 'sampler', 'sampling_metadata_cache', 'save_sharded_state', 'save_tensorized_model', 'scheduler_config', 'set_active_loras', 'set_active_prompt_adapters', 'set_in_profile_run', 'sliding_window', 'speculative_config', 'vllm_config', 'vocab_size']
+
+----
+objdump -T $(python -c "import torch; import os; print(os.path.join(os.path.dirname(torch.__file__), 'lib', 'libtorch_cuda.so'))") | grep GLIBC | sort -u
+which ldd
+ldd --version
+strings /home/leon/anaconda3/envs/chat-lg/lib/libstdc++.so.6 | grep GLIBCXX
+export LD_LIBRARY_PATH="/home/leon/anaconda3/envs/chat-lg/lib/libstdc++.so"
+export LD_LIBRARY_PATH=/home/leon/anaconda3/envs/chat-lg/lib/libstdc++.so:${LD_LIBRARY_PATH}
+
+(chat-lg) leon@leon-REN7000K-26IOB:~/anaconda3/envs/chat-lg/lib/python3.11/site-packages/vllm$ echo $LD_LIBRARY_PATH
+/usr/local/cuda-11.8/lib64:
+
+conda install -c conda-forge sysroot_linux-64=2.28
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+
+
+----
+/root/workspace/luna/DUMP_FC.bin
+
+[BPU_PLAT]FIXME: NEED Parse 0xa err status for x5
+[BPU_PLAT]BPU Plat Core(0) has running FCS:
+[BPU_PLAT]fc (185)
+[BPU_PLAT]BPU Plat Core(1) has no running FCS
+[BPU_PLAT]No bpu dump tool(bpu_dump), Can put the tool in 
+[BPU_PLAT] /userdata or /mnt or /tmp to capture error snapshot!!
+[BPU_PLAT]
+[BPU_PLAT]DUMP to file DUMP_FC.bin, len = 256
+[BPU_PLAT]Fatal BPU[0] error, Abort and Dumped the instance for DEUBG!!
+[BPU_PLAT]Fatal BPU[0] To Abort all process!!
+[BPU_PLAT]Fatal BPU[0] To Abort all process done(0)!!
+
+
+----
         {"role": "assistant", "content": """综上所述，完整的矩阵如下所示：
 ```
 2  5  10  17
@@ -11,3 +136,79 @@
         #{"role": "system", "content": "**再次强调1个输出内容要求**\n1.禁止生成任何超过当前设定能力范畴的任务或者语聊回复，可以对用户表示做不到\n**再次强调2个输出格式要求**\n1.不要输出任何思考过程；2.输出内容必须全部封装进Json结构（按照SYSTEM中所设定的规则）； \n /nothink"}, #{load_cleaner_prompt()} 
         {"role": "user", "content": f"{INPUT_CONTENT}"},
         #{"role": "assistant", "content": ""}
+
+---web search--
+<taviliy>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
+
+-> search with datas included
+3.禁止输出思考过程 /nothink\n"""<|im_end|>\n<|im_start|>user\nPlease answer the question based on the reference materials\n\n## Citation Rules:\n- Please cite the context at the end of sentences when appropriate.\n- Please use the format of citation number [number] to reference the context in corresponding parts of your answer.\n- If a sentence comes from multiple contexts, please list all relevant citation numbers, e.g., [1][2]. Remember not to group citations at the end but list them in the corresponding parts of your answer.\n\n## My question is:\n\n梁静茹《情歌》歌词\n\n## Reference Materials:\n\n```json\n[\n  {\n    "id": 1,\n    "content": "... 歌词很经典“一颗红豆为何想单挑这宇宙”；. 后来大家在梁静茹的《情歌》里找到了呼应的糖，歌词里提到“一整个宇宙换一颗红豆”，大家开始脑补：啊，这",\n    "sourceUrl": "https://k.sina.cn/article_3742966420_df19229402701ena8.html",\n    "type": "url"\n  }\n]\n```\n\nPlease respond in the same language as the user\'s question.\n<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=25666, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=GuidedDecodingParams(json=None, regex=None, choice=None, grammar=None, json_object=True, backend=None, whitespace_pattern=None, structural_tag=None), extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
+
+；3.禁止输出思考过程 /nothink\n"""<|im_end|>\n<|im_start|>user\nPlease answer the question based on the reference materials\n\n## Citation Rules:\n- Please cite the context at the end of sentences when appropriate.\n- Please use the format of citation number [number] to reference the context in corresponding parts of your answer.\n- If a sentence comes from multiple contexts, please list all relevant citation numbers, e.g., [1][2]. Remember not to group citations at the end but list them in the corresponding parts of your answer.\n\n## My question is:\n\n梁静茹《勇气》歌词\n\n## Reference Materials:\n\n```json\n[\n  {\n    "id": 1,\n    "content": "歌曲《勇气》歌词：终于做了这个决定别人怎么说我不理只要你也一样的肯定我愿意天涯海角都随你去我知道一切不容易我的心一直温习说服自己最怕你忽然说要放弃爱真的需要",\n    "sourceUrl": "http://www.gecizhaoge.com/m/Info/View.Asp?id=553",\n    "type": "url"\n  },\n  {\n    "id": 2,\n    "content": "梁静茹《勇气》真挚温暖，深入人心，一首让人无法忘怀的经典之作 5823 3\'55\\". 14 ... 歌曲歌词. 终于做了这个决定. 别人怎么说我不理. 只要你也一样的肯定. 我愿意",\n    "sourceUrl": "https://baike.baidu.com/item/%E5%8B%87%E6%B0%94/5620839",\n    "type": "url"\n  },\n  {\n    "id": 3,\n    "content": "《勇气》 梁静茹作词：瑞业作曲：光良终于做了这个决定别人怎么说我不理只要你也一样的肯定我愿意天涯海角都随你去我知道一切不容易我的心一直温习说服",\n    "sourceUrl": "https://www.youtube.com/watch?v=_8RK4G0KyDY",\n    "type": "url"\n  },\n  {\n    "id": 4,\n    "content": "梁靜茹#勇氣#光良歡迎訂閱滾石愛情故事YouTube 頻道→ https://reurl.cc/0d005A 「為什麼不能在一起？」 「因為愛你好累…」 夜已深，整層辦公室只剩下",\n    "sourceUrl": "https://www.youtube.com/watch?v=ZGz1kr3Tbwk",\n    "type": "url"\n  },\n  {\n    "id": 5,\n    "content": "勇气梁静茹终于做了这个决定别人怎么说我不理只要你也一样的肯定我愿意天涯海角都随你去我知道一切不容易我的心一直温习说服自己最怕你忽然说要放弃爱",\n    "sourceUrl": "https://www.youtube.com/watch?v=KfwJhh0MLLU",\n    "type": "url"\n  }\n]\n```\n\nPlease respond in the same language as the user\'s question.\n<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=25276, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=GuidedDecodingParams(json=None, regex=None, choice=None, grammar=None, json_object=True, backend=None, whitespace_pattern=None, structural_tag=None), extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
+
+165:INFO 转圈的圈儿。
+{"content":"那我来转个圈儿吧。","expression":"喜悦","session_id":"11","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"7","rotation_angle":"360"}]}
+不然的话他会
+{"content":"请告诉我完整的指令，这样我可以更好地帮助你。","expression":"思考","session_id":"12","type":"2"}
+到这边我
+{"content":"好的，请稍等，我将移动到你身边。","expression":"喜悦","session_id":"13","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"12"}]}
+user\n{"reMsg_type":"1","session_id":"13","tasks":[{"notice_word":"","task_id":"1","task_state":"1","task_subState":"3","task_type":"12"}]}
+assistant\n{"content":"已经开始向你移动了。","expression":"喜悦","session_id":"13","type":"2"}
+user\n结束所有任务。
+assistant\n{"content":"好的，所有任务已被取消。","expression":"喜悦","session_id":"14","type":"3","task_cont":"2","tasks":[]}
+user\n{"reMsg_type":"1","session_id":"14","tasks":[{"notice_word":"我往右边挪挪啦","task_id":"","task_state":"","task_subState":"","task_type":""}]}
+
+----
+    "messages": [
+        {"role": "system", "content": f"{load_cleaner_prompt()}"}, #{load_cleaner_prompt()} 
+        {"role": "user", "content": "转圈的圈儿。"},        
+        {"role": "assistant", "content": """{"content":"那我来转个圈儿吧。","expression":"喜悦","session_id":"11","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"7","rotation_angle":"360"}]}"""},
+        {"role": "user", "content": "不然的话他会"},
+        {"role": "assistant", "content": """{"content":"请告诉我完整的指令，这样我可以更好地帮助你。","expression":"思考","session_id":"12","type":"2"}"""},
+        {"role": "user", "content": "到这边我"},
+        {"role": "assistant", "content": """{"content":"好的，请稍等，我将移动到你身边。","expression":"喜悦","session_id":"13","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"12"}]}"""},
+        {"role": "user", "content": """{"reMsg_type":"1","session_id":"13","tasks":[{"notice_word":"","task_id":"1","task_state":"1","task_subState":"3","task_type":"12"}]}"""},
+        {"role": "assistant", "content": """{"content":"已经开始向你移动了。","expression":"喜悦","session_id":"13","type":"2"}"""},
+        {"role": "user", "content": "结束所有任务。"},
+        {"role": "assistant", "content": """{"content":"好的，所有任务已被取消。","expression":"喜悦","session_id":"14","type":"3","task_cont":"2","tasks":[]}"""},
+        {"role": "user", "content": """{"reMsg_type":"1","session_id":"14","tasks":[{"notice_word":"我往右边挪挪啦","task_id":"","task_state":"","task_subState":"","task_type":""}]}"""},
+        #{"role": "assistant", "content": f""}
+    ],
+---->最小出发顺序：跟踪-反馈跟踪-结束任务-任务状态反馈X
+    "messages": [
+        {"role": "system", "content": f"{load_cleaner_prompt()}"}, #{load_cleaner_prompt()} 
+        
+        {"role": "user", "content": "到这边我"},
+        {"role": "assistant", "content": """{"content":"好的，请稍等，我将移动到你身边。","expression":"喜悦","session_id":"13","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"12"}]}"""},
+        {"role": "user", "content": """{"reMsg_type":"1","session_id":"13","tasks":[{"notice_word":"","task_id":"1","task_state":"1","task_subState":"3","task_type":"12"}]}"""},
+        {"role": "assistant", "content": """{"content":"已经开始向你移动了。","expression":"喜悦","session_id":"13","type":"2"}"""},
+        {"role": "user", "content": "结束所有任务。"},
+        {"role": "assistant", "content": """{"content":"好的，所有任务已被取消。","expression":"喜悦","session_id":"14","type":"3","task_cont":"2","tasks":[]}"""},
+        {"role": "user", "content": """{"reMsg_type":"1","session_id":"14","tasks":[{"notice_word":"我往右边挪挪啦","task_id":"","task_state":"","task_subState":"","task_type":""}]}"""},
+        #{"role": "assistant", "content": f""}
+    ],
+------
+
+
+---
+转圈的圈儿。
+不然的话他会
+到这边我
+--{"reMsg_type":"1","session_id":"13","tasks":[{"notice_word":"","task_id":"1","task_state":"1","task_subState":"3","task_type":"12"}]}
+结束所有任务。
+{"reMsg_type":"1","session_id":"14","tasks":[{"notice_word":"我往右边挪挪啦","task_id":"","task_state":"","task_subState":"","task_type":""}]}
+
+{"reMsg_type":"1","session_id":"14","tasks":[{"notice_word":"我往左边挪挪啦","task_id":"","task_state":"","task_subState":"","task_type":""}]}
+
+---->#28之后出问题：
+{"content":"所有任务已经取消，如果有新的任务请告诉我。","expression":"喜悦","session_id":"14","type":"2"}
+
+---
+你可以面向我么？
+你==定盘这个设定还没有使得模型理解，是否要
+
+
+----
+双层user
+jinja2.exceptions.SecurityError: access to attribute 'append' of 'list' object is unsafe.
+----
+

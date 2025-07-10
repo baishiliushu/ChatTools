@@ -10,7 +10,7 @@ INPUT_PATH = "./input1.txt"
 
 BASE_URL = "http://192.168.50.208:8000" #/v1/chat/completions
 API_KEY = "mindo" 
-MODEL_NAME = "QwQ-32B-AWQ" 
+MODEL_NAME ="QwQ-32B-AWQ"  #"Qwem-0.5B-AWQ" #"QwQ-32B-AWQ" 
 
 
 #BASE_URL = "https://api.deepseek.com" # v1/chat/completions
@@ -23,10 +23,8 @@ def load_cleaner_prompt(path=PROMPT_PATH):
         return f.read().strip()
 
 
-
-INPUT_CONTENT = "去卧室找爸爸"
 INPUT_CONTENT = load_cleaner_prompt(INPUT_PATH)
-INPUT_CONTENT = "你正在观察一个硬币投掷实验。这枚硬币已经连续100次都显示为正面。研究人员现在要进行第101次投掷。 这枚硬币第101次投掷显示正面的概率是多少？"
+INPUT_CONTENT = ""
 
 """
 HEADERS = {
@@ -43,116 +41,25 @@ HEADERS = {
 
 # 构建请求体
 
-OUT_TYPE = "text" # "json_object"  # text
+OUT_TYPE = "json_object" # "json_object"  # text
 
 # 输入token长度
 DATA = {
     "model": MODEL_NAME,
     "messages": [
         {"role": "system", "content": f"{load_cleaner_prompt()}"}, #{load_cleaner_prompt()} 
-        {"role": "user", "content": """农夫带着一只老虎、一只羊、一条蛇、一只鸡和一筐苹果要过河。
-
-农夫的船一次只能载农夫和一样东西过河。
-
-已知农夫不在的时候，老虎和羊在一起的话，老虎会吃掉羊，如果鸡也在的话，鸡会阻止老虎吃羊；
-
-农夫不在的时候，蛇和鸡在一起的话，蛇会吃掉鸡，如果老虎也在的话，老虎会阻止蛇吃鸡；
-
-农夫不在的时候羊和苹果在一起的话，羊会吃掉苹果，如果蛇也在的话，蛇会阻止羊吃苹果；
-
-老虎不吃鸡(鸡太小不够老虎塞牙缝的)，蛇不吃苹果(蛇不吃素)。
-
-请问农夫如何才能将老虎、羊、蛇、鸡和苹果安全送到对岸？"""},        
-        {"role": "assistant", "content": """这是一个经典的逻辑谜题，可以通过一系列的步骤确保所有物品都能安全过河。我们可以通过逐步分析和调整来解决这个问题。下面是详细的步骤：
-
-第一步：带老虎过河
-
-农夫带老虎过河。
-农夫单独返回。
-第二步：带蛇过河
-
-农夫带蛇过河。
-农夫带老虎返回。
-第三步：带羊过河
-
-农夫带羊过河。
-农夫单独返回。
-第四步：带鸡过河
-
-农夫带鸡过河。
-农夫带蛇返回。
-第五步：带苹果过河
-
-农夫带苹果过河。
-农夫单独返回。
-第六步：带老虎过河
-
-农夫带老虎过河。
-农夫单独返回。
-第七步：带蛇过河
-
-农夫带蛇过河。
-现在，让我们详细说明每一步的原因：
-
-第一步：带老虎过河
-
-把老虎先带过去，避免老虎和羊单独在一起的情况。
-第二步：带蛇过河
-
-带蛇过河，因为老虎已经在对岸，不会吃蛇。
-农夫带老虎返回，因为蛇和鸡不能单独在一起。
-第三步：带羊过河
-
-带羊过河，因为此时老虎不在对岸。
-农夫单独返回。
-第四步：带鸡过河
-
-带鸡过河，因为此时老虎在对岸，会阻止蛇吃鸡。
-农夫带蛇返回，因为蛇和鸡不能单独在一起。
-第五步：带苹果过河
-
-带苹果过河，因为此时蛇和羊不在一起。
-农夫单独返回。
-第六步：带老虎过河
-
-带老虎过河，因为此时老虎可以保护其他动物。
-农夫单独返回。
-第七步：带蛇过河
-
-最后带蛇过河，因为此时所有动物都已经在对岸。
-通过以上步骤，所有物品都可以安全地到达对岸。"""},
-        {"role": "user", "content": "在下列序列中找出规律，并给出后续两个元素：OTTFFSSEN, OTTFFSSETE, ___, ___"},
-        {"role": "assistant", "content": """这个序列实际上是由英文单词中的字母组成的，这些字母代表的是从1到某个数字的英文拼写中每个数字出现的第一个字母。
-
-具体来说：
-
-O = One (1)
-T = Two (2)
-T = Three (3)
-F = Four (4)
-F = Five (5)
-S = Six (6)
-S = Seven (7)
-E = Eight (8)
-N = Nine (9)
-所以，这个序列是：
-
-OTTFFSSEN (One to Nine)
-OTTFFSSETE (One to Ten)
-接下来的两个数字是 Eleven 和 Twelve，因此，它们的第一个字母分别是 E 和 T。
-
-所以，序列的下两个元素是 E 和 T。
-
-完整答案如下：```json\n{
-    "content": "序列的下两个元素是E和T。",
-    "expression": "喜悦",
-    "id": "456",
-    "session_id": "99",
-    "type": "2",
-    "timestamp": "2023-09-21 15:00:00"
-}\n```"""},
-
-        {"role": "user", "content": f"{INPUT_CONTENT}"},
+        
+        {"role": "user", "content": "转圈的圈儿。"},        
+        {"role": "assistant", "content": """{"content":"那我来转个圈儿吧。","expression":"喜悦","session_id":"11","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"7","rotation_angle":"360"}]}"""},
+        {"role": "user", "content": "不然的话他会"},
+        {"role": "assistant", "content": """{"content":"请告诉我完整的指令，这样我可以更好地帮助你。","expression":"思考","session_id":"12","type":"2"}"""},
+        {"role": "user", "content": "到这边我"},
+        {"role": "assistant", "content": """{"content":"好的，请稍等，我将移动到你身边。","expression":"喜悦","session_id":"13","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"12"}]}"""},
+        {"role": "user", "content": """{"reMsg_type":"1","session_id":"13","tasks":[{"notice_word":"","task_id":"1","task_state":"1","task_subState":"3","task_type":"12"}]}"""},
+        {"role": "assistant", "content": """{"content":"已经开始向你移动了。","expression":"喜悦","session_id":"13","type":"2"}"""},
+        {"role": "user", "content": "结束所有任务。"},
+        {"role": "assistant", "content": """{"content":"好的，所有任务已被取消。","expression":"喜悦","session_id":"14","type":"3","task_cont":"2","tasks":[]}"""},
+        {"role": "user", "content": """{"reMsg_type":"1","session_id":"14","tasks":[{"notice_word":"我往右边挪挪啦","task_id":"","task_state":"","task_subState":"","task_type":""}]}"""},
         #{"role": "assistant", "content": f""}
     ],
     #"top_k": 50,  # 控制生成文本时考虑的最高概率词汇的数量
@@ -161,7 +68,7 @@ OTTFFSSETE (One to Ten)
     #"presence_penalty": 0.1,  # 控制重复惩罚
     #"frequency_penalty": 0.1,  # 控制频率惩罚
     "stream": True, # 控制流式输出
-    #"response_format":{"type": f"{OUT_TYPE}"},
+    "response_format":{"type": f"{OUT_TYPE}"},
     #"enable_search": "true",          # 启用搜索增强
     #"search_options": {
     #    "forced_search": "true"       # 强制搜索（可能覆盖模型默认行为）

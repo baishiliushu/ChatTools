@@ -2,15 +2,16 @@ import requests
 import json
 import time
 
-PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt" #0414-chat.txt"
-#PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
+#PROMPT_PATH = "./prompt_for_test/0423-1.txt" #/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt 0414-chat.txt
+PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
 INPUT_PATH = "./input1.txt" 
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
 
-BASE_URL = "http://192.168.50.208:8000" #/v1/chat/completions
+BASE_URL = "http://192.168.50.208:8000" 
+# 222 # 208 #/v1/chat/completions
 API_KEY = "mindo" 
-MODEL_NAME = "QwQ-32B-AWQ" 
+MODEL_NAME ="QwQ-32B-AWQ"  # Qwen-Local-AWQ "Qwen-0.5B-AWQ" #"QwQ-32B-AWQ" 
 
 
 #BASE_URL = "https://api.deepseek.com" # v1/chat/completions
@@ -33,12 +34,13 @@ def load_prompt_based_think(path=PROMPT_PATH, _enable_think=0):
         
     return s
 
-INPUT_CONTENT = "去卧室找爸爸"
+INPUT_CONTENT = "去卧室找爸爸" #去厨房喊妈妈来客厅歇一会。
 INPUT_CONTENT = load_cleaner_prompt(INPUT_PATH)
 
-INPUT_CONTENT = """去厨房喊妈妈来客厅歇一会。"""
+
 
 #答案：缺失的数字依次为：19, 16, 19
+
 
 # 构建请求头
 HEADERS = {
@@ -46,11 +48,28 @@ HEADERS = {
     'Authorization': f'Bearer {API_KEY}'
 }
 
-# 构建请求体
-
+INSTERT_BEFORE = False
 OUT_TYPE = "json_object" # "json_object"  # text
+INPUT_CONTENT = """请说明在一个紧急情况下，你如何根据自身意图和智慧快速做出决策。"""
+
+def last_user_input(_json_head = INSTERT_BEFORE, _input = None):
+    user_word = """分析下列矩阵的模式，并填写空缺处的数值（标记为?）：
+2  5  10  17
+4  7  12  ?
+8  11 ?  23
+16 ?  20  27
+
+"""
+    if _input is not None:
+        if len(_input) > 0:
+            user_word = _input
+    if _json_head:
+        user_word = "Return Json. " + user_word
+    return user_word
 
 # 输入token长度
+# 构建请求体
+
 DATA = {
     "model": MODEL_NAME,
     "messages": [
@@ -178,14 +197,12 @@ find_prime_position(target) 函数：
 调用 find_prime_position(target) 函数计算其位置。
 输出结果。
 运行这段代码将会输出 438990637 是第多少个质数。"""},
-        {"role": "user", "content": """分析下列矩阵的模式，并填写空缺处的数值（标记为?）：
-2  5  10  17
-4  7  12  ?
-8  11 ?  23
-16 ?  20  27
-
-"""},
-        #{"role": "assistant", "content": "{"}
+        {"role":"user", "content": "跳个舞"},
+        {"role": "assistant", "content": """{"content":"","expression":"喜悦","session_id":"113","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"15"}]}"""},
+        {"role":"user", "content": "跳个舞"},
+        {"role":"user", "content": "跳个个舞"},
+        {"role": "user", "content": last_user_input(_input = INPUT_CONTENT)},
+        #{"role": "assistant", "content": "{\"content\": \""} #prefill要改模型chatmp，和nothink冲突
 
     ],
     #"top_k": 50,  # 控制生成文本时考虑的最高概率词汇的数量
@@ -227,11 +244,12 @@ def print_time_length(s, _info="", _print=True):
         print("[TIMER] {} : {:.3f}s".format(_info, e - s))
     return e
 
-def process_stream_response(response):
+def process_stream_response(response, start_time = None):
     """处理流式响应并实时输出生成的文本"""
     t_cnts = []
     t_context = time.time()
-    
+    if start_time is not None:
+        t_context = start_time
     generated_text = ""
     for line in response.iter_lines():
         
@@ -276,10 +294,10 @@ def main():
     FISTST_WORD_INDEX = 1 # 7
 
     if response.status_code == 200:
-        generated_text, t_texts = process_stream_response(response)
+        generated_text, t_texts = process_stream_response(response, t_start)
         print("----Final Generated Text:----\n", generated_text)
         if len(t_texts) > 0:
-            print("[time]first token: {}s, last token: {}s".format(t_texts[0] - t_start, t_texts[-1] - t_start))
+            print("[time]first token: {}s (include request time: {}s), last token: {}s, ".format(t_texts[0] - t_start, t_request - t_start, t_texts[-1] - t_start))
         if len(t_texts) > FISTST_WORD_INDEX:
             print("[time]first word: {}s".format(t_texts[FISTST_WORD_INDEX - 1] - t_start))
             
@@ -288,9 +306,9 @@ def main():
     print("[time]request: {:.3f}s".format(t_request - t_start))
     t_total_end = print_time_length(t_start, "TOTAL:", True)
     token_length = token_size(generated_text)
-    print(f"input is :{INPUT_CONTENT}, string-size:{len(generated_text)}, token-size:{token_length}, avg:{token_length / (t_total_end - t_start)} t/s")
+    print(f"input is :{INPUT_CONTENT}, string-size:{len(generated_text)}, token-size:{token_length}, avg:{token_length / (t_total_end - t_start)} w/s")
     #print("API PARAM:{}".format(DATA["response_format"]))
-    print("prompt path is {}".format(PROMPT_PATH))
+    print("server is {}, prompt path is {}, format limit is {}, insert before input {}".format(BASE_URL, PROMPT_PATH, OUT_TYPE, INSTERT_BEFORE))
     
 if __name__ == "__main__":
     main()

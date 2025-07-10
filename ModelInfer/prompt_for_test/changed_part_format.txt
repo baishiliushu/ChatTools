@@ -1,0 +1,114 @@
+{%- set skip_indices = [] %}
+{%- for i in range(messages|length) %}
+    {%- set message = messages[i] %}
+    {%- if message.role == \"user\" %}
+        {%- if (i + 1)  < (messages|length) %}
+            {%- if messages[i+1].role == \"user\" %}
+                {%- set _ = skip_indices.append(i) %}
+            {%- endif %}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
+{%- for i in range(messages|length) %}
+    {%- if i not in skip_indices %}
+        {%- set message = messages[i] %}
+        {%- if (message.role == \"user\") or (message.role == \"system\" and i != 0 ) or (message.role == \"assistant\" and not message.tool_calls) %}
+            {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}
+        {%- elif message.role == \"assistant\" %}
+            {{- '<|im_start|>' + message.role }}
+            {%- if message.content %}
+                {{- '\\n' + message.content }}
+            {%- endif %}
+            {%- for tool_call in message.tool_calls %}
+                {%- if tool_call.function is defined %}
+                    {%- set tool_call = tool_call.function %}
+                {%- endif %}
+                {{- '\\n<tool_call>\\n{\"name\": \"' }}
+                {{- tool_call.name }}
+                {{- '\", \"arguments\": ' }}
+                {{- tool_call.arguments | tojson }}
+                {{- '}\\n</tool_call>' }}
+            {%- endfor %}
+            {{- '<|im_end|>\\n' }}
+        {%- elif message.role == \"tool\" %}
+            {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}
+                {{- '<|im_start|>user' }}
+            {%- endif %}
+            {{- '\\n<tool_response>\\n' }}
+            {{- message.content }}
+            {{- '\\n</tool_response>' }}
+            {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}
+                {{- '<|im_end|>\\n' }}
+            {%- endif %}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
+
+---
+修改
+{%- set skip_indices = [] %}\n{%- for i in range(messages|length) %}\n    {%- set message = messages[i] %}\n    {%- if message.role == \"user\" %}\n        {%- if (i + 1)  < (messages|length) %}\n            {%- if messages[i+1].role == \"user\" %}\n                {%- set _ = skip_indices.append(i) %}\n            {%- endif %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- for i in range(messages|length) %}\n    {%- if i not in skip_indices %}\n        {%- set message = messages[i] %}\n        {%- if (message.role == \"user\") or (message.role == \"system\" and i != 0 ) or (message.role == \"assistant\" and not message.tool_calls) %}\n            {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n        {%- elif message.role == \"assistant\" %}\n            {{- '<|im_start|>' + message.role }}\n            {%- if message.content %}\n                {{- '\\n' + message.content }}\n            {%- endif %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if tool_call.function is defined %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '\\n<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {{- tool_call.arguments | tojson }}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n            {{- '<|im_end|>\\n' }}\n        {%- elif message.role == \"tool\" %}\n            {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n                {{- '<|im_start|>user' }}\n            {%- endif %}\n            {{- '\\n<tool_response>\\n' }}\n            {{- message.content }}\n            {{- '\\n</tool_response>' }}\n            {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n                {{- '<|im_end|>\\n' }}\n            {%- endif %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n
+---
+danc:    :
+shua:        :
+---
+原始
+{%- for i in range(messages|length) %}\n    {%- if i not in skip_indices %}\n      
+{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) or (message.role == \"assistant\" and not message.tool_calls) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role }}\n        {%- if message.content %}\n            {{- '\\n' + message.content }}\n        {%- endif %}\n        {%- for tool_call in message.tool_calls %}\n            {%- if tool_call.function is defined %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {{- '\\n<tool_call>\\n{\"name\": \"' }}\n            {{- tool_call.name }}\n            {{- '\", \"arguments\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- '}\\n</tool_call>' }}\n        {%- endfor %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n
+--- 
+{%- for message in messages %} TO {%- if add_generation_prompt %} 
+---
+
+
+
+
+
+
+----
+loop.first 与 (i != 0)
+
+
+{# 获取消息总长度 #}
+{% set total_messages = messages | length %}
+{{ "<!-- 消息总数: " ~ total_messages ~ " -->" }}
+
+{# 统计连续user消息的索引 #}
+{% set consecutive_user = [] %}
+{% set current_group = [] %}
+{% for message in messages %}
+  {% if message.role == "user" %}
+    {% if not current_group or loop.index0 == current_group[-1] + 1 %}
+      {% set _ = current_group.append(loop.index0) %}
+    {% else %}
+      {% if current_group | length > 1 %}
+        {% set _ = consecutive_user.append(current_group) %}
+      {% endif %}
+      {% set current_group = [loop.index0] %}
+    {% endif %}
+  {% else %}
+    {% if current_group | length > 1 %}
+      {% set _ = consecutive_user.append(current_group) %}
+    {% endif %}
+    {% set current_group = [] %}
+  {% endif %}
+  
+  {# 处理最后一条消息 #}
+  {% if loop.last and current_group | length > 1 %}
+    {% set _ = consecutive_user.append(current_group) %}
+  {% endif %}
+{% endfor %}
+
+{# 输出连续用户消息组 #}
+{{ "<!-- 连续用户消息组数: " ~ consecutive_user | length ~ " -->" }}
+{% for group in consecutive_user %}
+{{ "<!-- 组" ~ loop.index ~ ": 索引 " ~ group | join(', ') ~ " -->" }}
+{% endfor %}
+
+
+---
+jinja2沙箱运行问题
+"chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- messages[0]['content'] }}\n    {%- else %}\n        {{- 'You are Qwen, created by Alibaba Cloud. You are a helpful assistant.' }}\n    {%- endif %}\n    {{- \"\\n\\n# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}\n    {%- else %}\n        {{- '<|im_start|>system\\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set skip_indices = namespace(value=[]) %}\n{%- for i in range(messages|length) %}\n    {%- set message = messages[i] %}\n    {%- if message.role == \"user\" %}\n        {%- if (i + 1) < (messages|length) %}\n            {%- if messages[i+1].role == \"user\" %}\n                {%- set skip_indices.value = skip_indices.value + [i] %}\n            {%- endif %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- for i in range(messages|length) %}\n    {%- if i not in skip_indices.value %}\n        {%- set message = messages[i] %}\n        {%- if (message.role == \"user\") or (message.role == \"system\" and i != 0 ) or (message.role == \"assistant\" and not message.tool_calls) %}\n            {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n        {%- elif message.role == \"assistant\" %}\n            {{- '<|im_start|>' + message.role }}\n            {%- if message.content %}\n                {{- '\\n' + message.content }}\n            {%- endif %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if tool_call.function is defined %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '\\n<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {{- tool_call.arguments | tojson }}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n            {{- '<|im_end|>\\n' }}\n        {%- elif message.role == \"tool\" %}\n            {%- if i == 0 or messages[i-1].role != \"tool\" %}\n                {{- '<|im_start|>user' }}\n            {%- endif %}\n            {{- '\\n<tool_response>\\n' }}\n            {{- message.content }}\n            {{- '\\n</tool_response>' }}\n            {%- if i == messages|length - 1 or messages[i+1].role != \"tool\" %}\n                {{- '<|im_end|>\\n' }}\n            {%- endif %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n"
+
+
+---
+
+

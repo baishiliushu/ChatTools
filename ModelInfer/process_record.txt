@@ -1,3 +1,24 @@
+特征点匹配：极线搜索
 ffmpeg -s 1920x1080 -pix_fmt nv12 -i "${nv12_file}.yuv" -pix_fmt rgb24 "../jpgs-org/${nv12_file}.jpg"
+(OSmFaster) pip install onnx-modifier
+(OSmFaster) onnx-modifier
+grep "INFO 06-24 16:36:31" ../logs/vllm.log -n  | awk -F':' '{print $1}'
+tail +15982 ../logs/vllm.log >> test.part.log
+grep "20:59:13.760" -B 3 | awk -F' ' '{print $1,$2,$3" "$4,$5}'
+kill -9 `ps aux | grep weixin | awk -F'leon' '{print $2}' |awk -F' ' '{print$1}'`
+ps aux | grep weixin
+
+rsync -l -r --progress ./* root@192.168.50.19:/root/liang_workspace/abby_msg_remote_wukong
 
 
+for img in $(cat all_select.txt); do if identify "$img" > /dev/null 2>&1; then echo "$img" >> all_select_use.txt; else echo "坏的图像文件: $img"; fi; done
+
+find /media/xin/data1/data/dirty_data/2024_0218/REMAP  -size +0c -type f | grep cam0|grep jpg | grep -v ORIGIN |sort > all.txt 
+awk '{if (NR%2 == 0) print $0; }' all_0.txt >all.txt #select.txt
+
+awk 'NR==FNR{a[$0]; next} !($0 in a)' error_feat.txt select.txt > new_select.txt
+
+cat all.txt |xargs -i cp -r --parent {} /media/leon/U391/20241217_gerry/img/
+cat detector-time.log  |grep -v "yolov5n"| grep " 5774 " | grep "preprocess" | awk -F"): " '{print $2}' | awk -F"ms" '{print $1}' | awk '{sum+=$1} END {print "", sum/NR}'
+
+cat data|awk '{sum+=$1} END {print "Average = ", sum/NR}'
