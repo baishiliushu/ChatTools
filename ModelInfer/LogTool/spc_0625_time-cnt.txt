@@ -49,4 +49,67 @@
 2025-06-25 10:43:25.747 		LLM返回文字	模型响应: 1.22秒, 
 2025-06-25 10:43:26.249 				语音生成: 0.50秒, 内容: :ok，
 
+首次请求-14B
+2025-07-09 15:07:23.063 [reactor-http-epoll-3] INFO  c.x.w.llm.providers.OpenAiService - 开始请求LLM... endpoint->http://192.168.50.208:8000/v1, model->QwQ-32B-AWQ
+2025-07-09 15:07:26.526 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.w.service.DialogueService - handleSentence4Indemind no format sentence->:好的，, cutFlag->true
+2025-07-09 15:07:27.254 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.w.service.DialogueService - handleSentence4Indemind format after sentence->:1,tasks, 
+2025-07-09 15:07:27.733 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.websocket.service.MessageService - sendMessage4IndemindNoParse发送消息 - SessionId: 735a6cbf, message: {"content":"好的，现在进入跟踪模式
+","expression":"喜悦","session_id":"967","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"12"}]}
+
+
+正常请求-14B
+2025-07-09 15:07:42.870 [reactor-http-epoll-3] INFO  c.x.w.llm.providers.OpenAiService - 开始请求LLM... endpoint->http://192.168.50.208:8000/v1, model->QwQ-32B-AWQ
+2025-07-09 15:07:43.652 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.w.service.DialogueService - handleSentence4Indemind no format sentence->:好的，, cutFlag->true    LLM返回文字	模型响应: 0.78秒,
+
+
+--->以前没有统计，模型收到、模型输出、接到完整输出
+INFO 07-09 15:07:42.925 [logger.py:39] Received 
+#INFO 07-09 15:07:43.374 [engine.py:310] Added request chatcmpl-fc1977b1097148ef9f7870f6c6aa3d82.
+INFO 07-09 15:07:43.557 Avg 
+2025-07-09 15:07:44.381 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.w.service.DialogueService - handleSentence4Indemind format after sentence->, cutFlag->false, isFirst->false, isLast->true
+2025-07-09 15:07:44.381 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.websocket.service.MessageService - sendMessageSpeechAndExpression4Indemind发送消息 - SessionId: 735a6cbf, message: {"id":"","session_id":"967","type":"2","content":"好的，现在进入跟踪模式","expression":"喜悦","timestamp":""} LLM完整输出0.729秒	模型响应: 1.511秒,
+
+----------
+快速建图32B
+-优化前
+2025-06-25 10:43:24.529			开始请求LLM..
+2025-06-25 10:43:25.747 		LLM返回文字	模型响应: 1.22秒, 
+
+-优化后
+2025-07-09 15:07:42.870 开始请求LLM... 
+2025-07-09 15:07:43.652   LLM返回文字	模型响应: 0.78秒,
+
+跟踪14B
+
+--->以前没有统计----
+- 模型接到请求时刻 距离云端发起请求:55ms
+INFO 07-09 15:07:42.925 [logger.py:39] Received 
+- 模型推理输出时刻 距离云端接到首个文字(?网络+格式字符的生成时间) ：278ms OR 95ms
+INFO 07-09 15:07:43.374 Added request
+INFO 07-09 15:07:43.557 Avg 
+- 完整输出
+2025-07-09 15:07:44.381 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.websocket.service.MessageService - sendMessageSpeechAndExpression4Indemind发送消息 - SessionId: 735a6cbf, message: {"id":"","session_id":"967","type":"2","content":"好的，现在进入跟踪模式","expression":"喜悦","timestamp":""} LLM完整输出0.729秒	模型响应: 1.511秒,
+
+-----
+1511-110=1401
+3041-110=2931
+speed_factor = 2.0921
+
+---32B
+[A-0]20:24:50.627 --  -->[M-0]20:24:50.685 --  -->[M-1]20:24:51.137 --  -->[A-1]20:24:51.838 --  -->[A-2]20:24:53.668
+[M-0] -- ? 452ms -->[M-1]
+[A-0] -- 1211ms -->[A-1] 
+[A-0] -- 3041ms -->[A-2] 
+->MODEL 
+INFO 07-07 20:24:50.685 [logger.py:39] Received  user\n跟着你走了 json_object=True,
+INFO 07-07 20:24:51.137 [engine.py:310] Added request chatcmpl-3dcbd5cf5f0c4633b3c54829a2ad9965.
+INFO 07-07 20:24:52.164 [metrics.py:486] Avg 
+
+->API
+2025-07-07 20:24:50.627 [reactor-http-epoll-13] INFO  c.x.w.llm.providers.OpenAiService - 开始请求LLM... endpoint->http://192.168.50.208:8000/v1, 
+2025-07-07 20:24:51.838 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.w.service.DialogueService - handleSentence4Indemind no format sentence->:好的，
+2025-07-07 20:24:53.668 [OkHttp http://192.168.50.208:8000/...] INFO  c.x.websocket.service.MessageService - sendMessageSpeechAndExpression4Indemind发送消息 - SessionId: 71e6de30, message: {"id":"","session_id":"235","type":"2","content":"好的，进入跟踪模式。","expression":"喜悦","timestamp":""}
+
+--
+
 
