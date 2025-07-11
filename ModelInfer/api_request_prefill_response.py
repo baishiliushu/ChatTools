@@ -8,10 +8,10 @@ INPUT_PATH = "./input1.txt"
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
 
-BASE_URL = "http://192.168.50.208:8000" 
+BASE_URL = "http://192.168.50.222:8000" 
 # 222 # 208 #/v1/chat/completions
 API_KEY = "mindo" 
-MODEL_NAME ="QwQ-32B-AWQ"  # Qwen-Local-AWQ "Qwen-0.5B-AWQ" #"QwQ-32B-AWQ" 
+MODEL_NAME ="Qwen-Local-AWQ-7Bp"  # Qwen-Local-AWQ "Qwen-0.5B-AWQ" #"QwQ-32B-AWQ" 
 
 
 #BASE_URL = "https://api.deepseek.com" # v1/chat/completions
@@ -49,8 +49,8 @@ HEADERS = {
 }
 
 INSTERT_BEFORE = False
-OUT_TYPE = "json_object" # "json_object"  # text
-INPUT_CONTENT = """请说明在一个紧急情况下，你如何根据自身意图和智慧快速做出决策。"""
+OUT_TYPE = "text" # "json_object"  # text
+INPUT_CONTENT = """"""
 
 def last_user_input(_json_head = INSTERT_BEFORE, _input = None):
     user_word = """分析下列矩阵的模式，并填写空缺处的数值（标记为?）：
@@ -308,7 +308,7 @@ def main():
     token_length = token_size(generated_text)
     print(f"input is :{INPUT_CONTENT}, string-size:{len(generated_text)}, token-size:{token_length}, avg:{token_length / (t_total_end - t_start)} w/s")
     #print("API PARAM:{}".format(DATA["response_format"]))
-    print("server is {}, prompt path is {}, format limit is {}, insert before input {}".format(BASE_URL, PROMPT_PATH, OUT_TYPE, INSTERT_BEFORE))
+    print("server is {} {}, prompt path is {}, format limit is {}, insert before input {}".format(BASE_URL, MODEL_NAME, PROMPT_PATH, OUT_TYPE, INSTERT_BEFORE))
     
 if __name__ == "__main__":
     main()
