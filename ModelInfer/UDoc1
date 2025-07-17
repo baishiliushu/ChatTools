@@ -214,4 +214,8 @@ jinja2.exceptions.SecurityError: access to attribute 'append' of 'list' object i
 grep -v '^$' a.log > b.log
 cat simplier_dailog_vllm-25_07_08-17_49_41.log  |  awk -F'<\\|im_start\\|>user' '{print $NF}' | awk -F'<' '{print $1}'
 ----
+纯数字
+grep -b -n -P '"task_type":\d+\}\]\}' vllm-25_07_16-21_56_21-14B.log
+
+---
 
