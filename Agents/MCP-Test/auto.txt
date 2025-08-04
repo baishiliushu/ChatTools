@@ -1,0 +1,190 @@
+from fastapi import FastAPI, Request, Header, HTTPException
+from fastapi.responses import StreamingResponse
+import uvicorn
+import json
+import time
+import asyncio
+from mcp_tools import MCPTools
+
+app = FastAPI()
+
+# 会话存储（简单内存实现）
+sessions = {}
+
+@app.post("/mcp")
+async def handle_post(
+    request: Request,
+    mcp_session_id: str = Header(default=None),
+    mcp_request_type: str = Header(default="execute")
+):
+    """处理POST请求，初始化任务"""
+    try:
+        # 生成会话ID（如果未提供）
+        session_id = mcp_session_id or f"mcp_{int(time.time()*1000)}"
+        
+        # 获取请求数据
+        request_data = await request.json()
+        
+        # 存储初始会话状态
+        sessions[session_id] = {
+            "status": "processing",
+            "result": None,
+            "completed": False
+        }
+        
+        # 处理请求
+        if mcp_request_type == "list-tools":
+            sessions[session_id]["result"] = MCPTools.list_tools()
+            sessions[session_id]["completed"] = True
+        elif mcp_request_type == "execute":
+            method = request_data.get("method")
+            if method == "time:get-local":
+                params = request_data.get("params", {})
+                sessions[session_id]["result"] = MCPTools.get_local_time(params)
+                sessions[session_id]["completed"] = True
+            else:
+                raise HTTPException(404, detail=f"Unsupported method: {method}")
+        
+        return {
+            "session_id": session_id,
+            "status": sessions[session_id]["status"]
+        }
+    
+    except json.JSONDecodeError:
+        raise HTTPException(400, detail="Invalid JSON format")
+    except Exception as e:
+        raise HTTPException(500, detail=str(e))
+
+@app.get("/mcp")
+async def handle_get(
+    request: Request,
+    mcp_session_id: str = Header(...)
+):
+    """处理GET请求，流式返回结果"""
+    async def generate():
+        session = sessions.get(mcp_session_id)
+        if not session:
+            yield json.dumps({"error": "Invalid session ID"}) + "\n"
+            return
+        
+        while True:
+            if await request.is_disconnected():
+                break
+            
+            if session["completed"]:
+                yield json.dumps({
+                    "result": session["result"],
+                    "status": "completed"
+                }) + "\n"
+                break
+            
+            yield json.dumps({"status": "processing"}) + "\n"
+            await asyncio.sleep(0.5)
+    
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",
+        headers={"Mcp-Session-Id": mcp_session_id}
+    )
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8050)
+
+
+
+###
+import time
+
+class MCPTools:
+    @staticmethod
+    def list_tools() -> dict:
+        """列出所有可用工具"""
+        return {
+            "tools": [
+                {
+                    "name": "time:get-local",
+                    "description": "获取服务器本地时间",
+                    "parameters": [
+                        {
+                            "name": "format",
+                            "type": "string",
+                            "description": "时间格式（timestamp/iso/human）",
+                            "required": False
+                        }
+                    ]
+                },
+                {
+                    "name": "mcp:list-tools",
+                    "description": "列出所有可用工具",
+                    "parameters": []
+                }
+            ]
+        }
+
+"""
+    @staticmethod
+    def get_local_time(params: dict) -> str:
+        """获取本地时间"""
+        fmt = params.get("format", "human")
+        
+        if fmt == "timestamp":
+            return str(time.time())
+        elif fmt == "iso":
+            return time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        else:  # human readable
+            return time.strftime("%Y-%m-%d
+
+请求时报错如下。
+Error invoking remote method 'mcp:list-tools':Error:[MCP] Error activating sever mcp: Error POSTing to endpoing(HTTP 404):Not found
+cherry配置的mcp地址少了一部分path
+"""
+
+--cherry使能工具后的模型输入消息--
+INFO 07-31 16:23:11.128 [logger.py:39] Received request chatcmpl-e3b3ee5bb5ee49d4bc8a304d8d8b7e37: prompt: '<|im_start|>system\nIn this environment you have access to a set of tools you can use to answer the user\'s question. You can use one or more tools per message, and will receive the result of that tool use in the user\'s response. You use tools step-by-step to accomplish a given task, with each tool use informed by the result of the previous tool use.\n\n## Tool Use Formatting\n\nTool use is formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here\'s the structure:\n\n<tool_use>\n  <name>{tool_name}</name>\n  <arguments>{json_arguments}</arguments>\n</tool_use>\n\nThe tool name should be the exact name of the tool you are using, and the arguments should be a JSON object containing the parameters required by that tool. For example:\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nThe user will respond with the result of the tool use, which should be formatted as follows:\n\n<tool_use_result>\n  <name>{tool_name}</name>\n  <result>{result}</result>\n</tool_use_result>\n\nThe result should be a string, which can represent a file or any other output type. You can use this result as input for the next action.\nFor example, if the result of the tool use is an image file, you can use it in the next action like this:\n\n<tool_use>\n  <name>image_transformer</name>\n  <arguments>{"image": "image_1.jpg"}</arguments>\n</tool_use>\n\nAlways adhere to this format for the tool use to ensure proper parsing and execution.\n\n## Tool Use Examples\n\nHere are a few examples using notional tools:\n---\nUser: Generate an image of the oldest person in this document.\n\nAssistant: I can use the document_qa tool to find out who the oldest person is in the document.\n<tool_use>\n  <name>document_qa</name>\n  <arguments>{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>document_qa</name>\n  <result>John Doe, a 55 year old lumberjack living in Newfoundland.</result>\n</tool_use_result>\n\nAssistant: I can use the image_generator tool to create a portrait of John Doe.\n<tool_use>\n  <name>image_generator</name>\n  <arguments>{"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>image_generator</name>\n  <result>image.png</result>\n</tool_use_result>\n\nAssistant: the image is generated as image.png\n\n---\nUser: "What is the result of the following operation: 5 + 3 + 1294.678?"\n\nAssistant: I can use the python_interpreter tool to calculate the result of the operation.\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>python_interpreter</name>\n  <result>1302.678</result>\n</tool_use_result>\n\nAssistant: The result of the operation is 1302.678.\n\n---\nUser: "Which city has the highest population , Guangzhou or Shanghai?"\n\nAssistant: I can use the search tool to find the population of Guangzhou.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Guangzhou"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>Guangzhou has a population of 15 million inhabitants as of 2021.</result>\n</tool_use_result>\n\nAssistant: I can use the search tool to find the population of Shanghai.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Shanghai"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>26 million (2019)</result>\n</tool_use_result>\nAssistant: The population of Shanghai is 26 million, while Guangzhou has a population of 15 million. Therefore, Shanghai has the highest population.\n\n\n## Tool Use Available Tools\nAbove example were using notional tools that might not exist for you. You only have access to these tools:\n<tools>\n\n<tool>\n  <name>mcp222-list_items_items_get</name>\n  <description>List Items\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`</description>\n  <arguments>\n    {"type":"object","properties":{},"required":[]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-create_item_items_post</name>\n  <description>Create Item\n\n\n**Query Parameters:**\n\n- **name** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"name":{"type":"string","title":"Name"}},"required":["name"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_item_items</name>\n  <description>Get Item\n\n\n**Path Parameters:**\n\n- **item_id** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"item_id":{"type":"integer","title":"Item Id"}},"required":["item_id"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_current_time</name>\n  <description>Get current time</description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-enable_track_people</name>\n  <description>start track task</description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n</tools>\n\n## Tool Use Rules\nHere are the rules you should always follow to solve your task:\n1. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.\n2. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself.\n3. If no tool call is needed, just answer the question directly.\n4. Never re-do a tool call that you previously did with the exact same parameters.\n5. For tool use, MARK SURE use XML tag format as shown in the examples above. Do not use any other format.\n\n# User Instructions\n**工具调用指令:**\n        当用户询问**当前时间**时 (例如：“现在几点了？”、“报一下时”):\n        1.  从用户的问题中识别获取时间的意图。\n        2.  **不要**直接回答当前时间。\n        3.  作为替代，你**必须**回复，并且**只回复**以下格式的 JSON 对象，不能包含任何其他文字、解释或前缀/后缀：\n            {\n              "tool_name": "get_current_time",\n              "tool_arguments": {\n              }\n            }\n       \n\n        **示例:**\n        如果用户问：“当期时间？”，你的回答**必须**是：\n        {\n          "tool_name": "get_current_time",\n          "tool_arguments": {\n          }\n        }\n        如果用户的问题不需要使用 \'get_current_time\' 工具获取时间，请像一个普通的助手那样直接回答。\n**工具结果拼接**\n1. 工具get_current_time返回时间，要以中文描述时间\n2. 工具enable_track_people返回了结果Json命令，禁止附加或者修改任何内容，直接发出工具输出的结果\n\nNow Begin! If you solve the task correctly, you will receive a reward of $1,000,000.\n<|im_end|>\n<|im_start|>user\nHere is the result of mcp tool use `get_current_time`:\n[{"type":"text","text":"2025-07-31 16:23:10"}]<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=1.0, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=30825, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=None, extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
+----
+二次请求
+
+INFO 07-31 16:31:17.802 [logger.py:39] Received request chatcmpl-82993148071847508091d67a2832bedb: prompt: '<|im_start|>system\nIn this environment you have access to a set of tools you can use to answer the user\'s question. You can use one or more tools per message, and will receive the result of that tool use in the user\'s response. You use tools step-by-step to accomplish a given task, with each tool use informed by the result of the previous tool use.\n\n## Tool Use Formatting\n\nTool use is formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here\'s the structure:\n\n<tool_use>\n  <name>{tool_name}</name>\n  <arguments>{json_arguments}</arguments>\n</tool_use>\n\nThe tool name should be the exact name of the tool you are using, and the arguments should be a JSON object containing the parameters required by that tool. For example:\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nThe user will respond with the result of the tool use, which should be formatted as follows:\n\n<tool_use_result>\n  <name>{tool_name}</name>\n  <result>{result}</result>\n</tool_use_result>\n\nThe result should be a string, which can represent a file or any other output type. You can use this result as input for the next action.\nFor example, if the result of the tool use is an image file, you can use it in the next action like this:\n\n<tool_use>\n  <name>image_transformer</name>\n  <arguments>{"image": "image_1.jpg"}</arguments>\n</tool_use>\n\nAlways adhere to this format for the tool use to ensure proper parsing and execution.\n\n## Tool Use Examples\n\nHere are a few examples using notional tools:\n---\nUser: Generate an image of the oldest person in this document.\n\nAssistant: I can use the document_qa tool to find out who the oldest person is in the document.\n<tool_use>\n  <name>document_qa</name>\n  <arguments>{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>document_qa</name>\n  <result>John Doe, a 55 year old lumberjack living in Newfoundland.</result>\n</tool_use_result>\n\nAssistant: I can use the image_generator tool to create a portrait of John Doe.\n<tool_use>\n  <name>image_generator</name>\n  <arguments>{"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>image_generator</name>\n  <result>image.png</result>\n</tool_use_result>\n\nAssistant: the image is generated as image.png\n\n---\nUser: "What is the result of the following operation: 5 + 3 + 1294.678?"\n\nAssistant: I can use the python_interpreter tool to calculate the result of the operation.\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>python_interpreter</name>\n  <result>1302.678</result>\n</tool_use_result>\n\nAssistant: The result of the operation is 1302.678.\n\n---\nUser: "Which city has the highest population , Guangzhou or Shanghai?"\n\nAssistant: I can use the search tool to find the population of Guangzhou.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Guangzhou"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>Guangzhou has a population of 15 million inhabitants as of 2021.</result>\n</tool_use_result>\n\nAssistant: I can use the search tool to find the population of Shanghai.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Shanghai"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>26 million (2019)</result>\n</tool_use_result>\nAssistant: The population of Shanghai is 26 million, while Guangzhou has a population of 15 million. Therefore, Shanghai has the highest population.\n\n\n## Tool Use Available Tools\nAbove example were using notional tools that might not exist for you. You only have access to these tools:\n<tools>\n\n<tool>\n  <name>mcp222-list_items_items_get</name>\n  <description>List Items\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`</description>\n  <arguments>\n    {"type":"object","properties":{},"required":[]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-create_item_items_post</name>\n  <description>Create Item\n\n\n**Query Parameters:**\n\n- **name** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"name":{"type":"string","title":"Name"}},"required":["name"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_item_items</name>\n  <description>Get Item\n\n\n**Path Parameters:**\n\n- **item_id** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"item_id":{"type":"integer","title":"Item Id"}},"required":["item_id"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_current_time</name>\n  <description>Get current time</description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-enable_track_people</name>\n  <description>start track task</description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n</tools>\n\n## Tool Use Rules\nHere are the rules you should always follow to solve your task:\n1. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.\n2. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself.\n3. If no tool call is needed, just answer the question directly.\n4. Never re-do a tool call that you previously did with the exact same parameters.\n5. For tool use, MARK SURE use XML tag format as shown in the examples above. Do not use any other format.\n\n# User Instructions\n* 语言规则 *\n1.  用户用什么语种就用什么语种生成回复\n\nNow Begin! If you solve the task correctly, you will receive a reward of $1,000,000.\n<|im_end|>\n<|im_start|>user\n什么点了现在？<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=1.0, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=31086, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=None, extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
+INFO:     192.168.50.222:45256 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 07-31 16:31:17.805 [engine.py:310] Added request chatcmpl-82993148071847508091d67a2832bedb.
+INFO 07-31 16:31:18.808 [logger.py:39] Received request chatcmpl-f9d39048488d42a2a101d72ea49d8d93: prompt: '<|im_start|>system\nIn this environment you have access to a set of tools you can use to answer the user\'s question. You can use one or more tools per message, and will receive the result of that tool use in the user\'s response. You use tools step-by-step to accomplish a given task, with each tool use informed by the result of the previous tool use.\n\n## Tool Use Formatting\n\nTool use is formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here\'s the structure:\n\n<tool_use>\n  <name>{tool_name}</name>\n  <arguments>{json_arguments}</arguments>\n</tool_use>\n\nThe tool name should be the exact name of the tool you are using, and the arguments should be a JSON object containing the parameters required by that tool. For example:\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nThe user will respond with the result of the tool use, which should be formatted as follows:\n\n<tool_use_result>\n  <name>{tool_name}</name>\n  <result>{result}</result>\n</tool_use_result>\n\nThe result should be a string, which can represent a file or any other output type. You can use this result as input for the next action.\nFor example, if the result of the tool use is an image file, you can use it in the next action like this:\n\n<tool_use>\n  <name>image_transformer</name>\n  <arguments>{"image": "image_1.jpg"}</arguments>\n</tool_use>\n\nAlways adhere to this format for the tool use to ensure proper parsing and execution.\n\n## Tool Use Examples\n\nHere are a few examples using notional tools:\n---\nUser: Generate an image of the oldest person in this document.\n\nAssistant: I can use the document_qa tool to find out who the oldest person is in the document.\n<tool_use>\n  <name>document_qa</name>\n  <arguments>{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>document_qa</name>\n  <result>John Doe, a 55 year old lumberjack living in Newfoundland.</result>\n</tool_use_result>\n\nAssistant: I can use the image_generator tool to create a portrait of John Doe.\n<tool_use>\n  <name>image_generator</name>\n  <arguments>{"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>image_generator</name>\n  <result>image.png</result>\n</tool_use_result>\n\nAssistant: the image is generated as image.png\n\n---\nUser: "What is the result of the following operation: 5 + 3 + 1294.678?"\n\nAssistant: I can use the python_interpreter tool to calculate the result of the operation.\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>python_interpreter</name>\n  <result>1302.678</result>\n</tool_use_result>\n\nAssistant: The result of the operation is 1302.678.\n\n---\nUser: "Which city has the highest population , Guangzhou or Shanghai?"\n\nAssistant: I can use the search tool to find the population of Guangzhou.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Guangzhou"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>Guangzhou has a population of 15 million inhabitants as of 2021.</result>\n</tool_use_result>\n\nAssistant: I can use the search tool to find the population of Shanghai.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Shanghai"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>26 million (2019)</result>\n</tool_use_result>\nAssistant: The population of Shanghai is 26 million, while Guangzhou has a population of 15 million. Therefore, Shanghai has the highest population.\n\n\n## Tool Use Available Tools\nAbove example were using notional tools that might not exist for you. You only have access to these tools:\n<tools>\n\n<tool>\n  <name>mcp222-list_items_items_get</name>\n  <description>List Items\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`</description>\n  <arguments>\n    {"type":"object","properties":{},"required":[]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-create_item_items_post</name>\n  <description>Create Item\n\n\n**Query Parameters:**\n\n- **name** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"name":{"type":"string","title":"Name"}},"required":["name"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_item_items</name>\n  <description>Get Item\n\n\n**Path Parameters:**\n\n- **item_id** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"item_id":{"type":"integer","title":"Item Id"}},"required":["item_id"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_current_time</name>\n  <description>Get current time</description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-enable_track_people</name>\n  <description>start track task</description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n</tools>\n\n## Tool Use Rules\nHere are the rules you should always follow to solve your task:\n1. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.\n2. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself.\n3. If no tool call is needed, just answer the question directly.\n4. Never re-do a tool call that you previously did with the exact same parameters.\n5. For tool use, MARK SURE use XML tag format as shown in the examples above. Do not use any other format.\n\n# User Instructions\n* 语言规则 *\n1.  用户用什么语种就用什么语种生成回复\n\nNow Begin! If you solve the task correctly, you will receive a reward of $1,000,000.\n<|im_end|>\n<|im_start|>user\nHere is the result of mcp tool use `get_current_time`:\n[{"type":"text","text":"2025-07-31 16:31:18"}]<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=1.0, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=31046, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=None, extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
+INFO:     192.168.50.222:45256 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO 07-31 16:31:18.810 [engine.py:310] Added request chatcmpl-f9d39048488d42a2a101d72ea49d8d93.
+
+
+
+
+---
+**工具调用指令:**\n        当用户询问**当前时间**时 (例如：“现在几点了？”、“报一下时”):\n        1.  从用户的问题中识别获取时间的意图。\n        2.  **不要**直接回答当前时间。\n        3.  作为替代，你**必须**回复，并且**只回复**以下格式的 JSON 对象，不能包含任何其他文字、解释或前缀/后缀：\n            {\n              "tool_name": "get_current_time",\n              "tool_arguments": {\n              }\n            }\n       \n\n        **示例:**\n        如果用户问：“当期时间？”，你的回答**必须**是：\n        {\n          "tool_name": "get_current_time",\n          "tool_arguments": {\n          }\n        }\n        如果用户的问题不需要使用 \'get_current_time\' 工具获取时间，请像一个普通的助手那样直接回答。\n**工具结果拼接**\n1. 工具get_current_time返回时间，要以中文描述时间\n2. 工具enable_track_people返回了结果Json命令，禁止附加或者修改任何内容，直接发出工具输出的结果
+
+
+## 工具列表  
+[获取时间,跟踪任务]
+## 规则
+1. 如果用户的问题不涉及使用工具列表里的工具，请像一个普通的助手那样回答。
+2. 如果用户输入涉及到工具调用，则按照相应工具的工具调用格式生成生成Json进行调用 
+3. 工具返回的结果，按照**各个工具**对应设定的**结果拼接要求**进行拼接
+## 工具
+### 获取时间:get_current_time
+1.  命中意图   
+用户要获取当前的实际时间。
+2.  **工具调用**  
+ {"tool_name": "get_current_time", "tool_arguments": { }}   
+ **示例**  
+用户：“什么时间了？”(或相似的内容，例如：“现在几点了？”、“报一下时”)
+输出： {"tool_name": "get_current_time","tool_arguments": {}}
+3. 工具结果拼接要求  
+要以中文描述当前的实际时间。
+
+### 跟踪任务:robot_track_people
+1.  命中意图  
+用户需要启用跟踪功能。
+2.  **工具调用**   
+ {"tool_name": "robot_track_people", "tool_arguments": {}}    
+ **示例**  
+用户：“跟着我”
+输出： {"tool_name": "robot_track_people","tool_arguments": {}}  
+3. 工具结果拼接要求  
+得到该工具结果后，直接透传该**工具输出结果**中的text字段对应的内容。
+---
+
