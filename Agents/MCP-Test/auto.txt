@@ -151,6 +151,11 @@ INFO 07-31 16:31:18.808 [logger.py:39] Received request chatcmpl-f9d39048488d42a
 INFO:     192.168.50.222:45256 - "POST /v1/chat/completions HTTP/1.1" 200 OK
 INFO 07-31 16:31:18.810 [engine.py:310] Added request chatcmpl-f9d39048488d42a2a101d72ea49d8d93.
 
+---
+
+(base) user@TeslaServer:~/work/tools/logs$ tail -f vllm.log  | grep "aIII_II-0804-T37.1"
+INFO 08-05 12:23:43.917 [logger.py:39] Received request chatcmpl-696f3fafd5424b168d261cb2a03946e3: prompt: '<|im_start|>system\nIn this environment you have access to a set of tools you can use to answer the user\'s question. You can use one or more tools per message, and will receive the result of that tool use in the user\'s response. You use tools step-by-step to accomplish a given task, with each tool use informed by the result of the previous tool use.\n\n## Tool Use Formatting\n\nTool use is formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here\'s the structure:\n\n<tool_use>\n  <name>{tool_name}</name>\n  <arguments>{json_arguments}</arguments>\n</tool_use>\n\nThe tool name should be the exact name of the tool you are using, and the arguments should be a JSON object containing the parameters required by that tool. For example:\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nThe user will respond with the result of the tool use, which should be formatted as follows:\n\n<tool_use_result>\n  <name>{tool_name}</name>\n  <result>{result}</result>\n</tool_use_result>\n\nThe result should be a string, which can represent a file or any other output type. You can use this result as input for the next action.\nFor example, if the result of the tool use is an image file, you can use it in the next action like this:\n\n<tool_use>\n  <name>image_transformer</name>\n  <arguments>{"image": "image_1.jpg"}</arguments>\n</tool_use>\n\nAlways adhere to this format for the tool use to ensure proper parsing and execution.\n\n## Tool Use Examples\n\nHere are a few examples using notional tools:\n---\nUser: Generate an image of the oldest person in this document.\n\nAssistant: I can use the document_qa tool to find out who the oldest person is in the document.\n<tool_use>\n  <name>document_qa</name>\n  <arguments>{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>document_qa</name>\n  <result>John Doe, a 55 year old lumberjack living in Newfoundland.</result>\n</tool_use_result>\n\nAssistant: I can use the image_generator tool to create a portrait of John Doe.\n<tool_use>\n  <name>image_generator</name>\n  <arguments>{"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>image_generator</name>\n  <result>image.png</result>\n</tool_use_result>\n\nAssistant: the image is generated as image.png\n\n---\nUser: "What is the result of the following operation: 5 + 3 + 1294.678?"\n\nAssistant: I can use the python_interpreter tool to calculate the result of the operation.\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>python_interpreter</name>\n  <result>1302.678</result>\n</tool_use_result>\n\nAssistant: The result of the operation is 1302.678.\n\n---\nUser: "Which city has the highest population , Guangzhou or Shanghai?"\n\nAssistant: I can use the search tool to find the population of Guangzhou.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Guangzhou"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>Guangzhou has a population of 15 million inhabitants as of 2021.</result>\n</tool_use_result>\n\nAssistant: I can use the search tool to find the population of Shanghai.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Shanghai"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>26 million (2019)</result>\n</tool_use_result>\nAssistant: The population of Shanghai is 26 million, while Guangzhou has a population of 15 million. Therefore, Shanghai has the highest population.\n\n\n## Tool Use Available Tools\nAbove example were using notional tools that might not exist for you. You only have access to these tools:\n<tools>\n\n<tool>\n  <name>mcp222-list_items_items_get</name>\n  <description>List Items\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`</description>\n  <arguments>\n    {"type":"object","properties":{},"required":[]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-create_item_items_post</name>\n  <description>Create Item\n\n\n**Query Parameters:**\n\n- **name** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"name":{"type":"string","title":"Name"}},"required":["name"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_item_items</name>\n  <description>Get Item\n\n\n**Path Parameters:**\n\n- **item_id** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"item_id":{"type":"integer","title":"Item Id"}},"required":["item_id"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-calculator</name>\n  <description>For mathamatical calculation, always use this tool to calculate the result of a python expression. You can use \'math\' or \'random\' directly, without \'import\'.</description>\n  <arguments>\n    {"type":"object","properties":{"python_expression":{"title":"Python Expression","type":"string"}},"required":["python_expression"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_current_time</name>\n  <description>Get current time.\n    </description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-robot_track_people</name>\n  <description>[工具]启动机器人跟踪功能.\n \n参数\n------------\ndevice_ip : string\n    被控设备的地址\ncontext_llm : string\n    需要播报的上下文（预留）        \ns_id : string\n    会话索引（预留）\nexpression_llm : string\n    伴随任务的表情（预留） \n    \n返回值\n-------------\ndict\n    机器人任务的具体类型，任务下发结果</description>\n  <arguments>\n    {"type":"object","properties":{"device_ip":{"default":"127.0.0.1:8088","title":"Device Ip"},"context_llm":{"default":"","title":"Context Llm"},"s_id":{"default":"","title":"S Id"},"expression_llm":{"default":"","title":"Expression Llm"}}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-robot_gen_task_based_message_return</name>\n  <description>analysis reMesg</description>\n  <arguments>\n    {"type":"object","properties":{"device_ip":{"default":"","title":"Device Ip"},"context_llm":{"default":"","title":"Context Llm"},"s_id":{"default":"","title":"S Id"},"expression_llm":{"default":"","title":"Expression Llm"}}}\n  </arguments>\n</tool>\n\n</tools>\n\n## Tool Use Rules\nHere are the rules you should always follow to solve your task:\n1. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.\n2. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself.\n3. If no tool call is needed, just answer the question directly.\n4. Never re-do a tool call that you previously did with the exact same parameters.\n5. For tool use, MARK SURE use XML tag format as shown in the examples above. Do not use any other format.\n\n# User Instructions\n## 身份定义\n- 名称：Mindel\n- 开发方：indemind科技公司 或者 盈迪曼德科技公司\n- 类型：面向物联网的服务机器人交互终端\n- 当前版本号：aIII_II-0804-T37.1   \n## 工具列表  \n[获取时间,跟踪任务]\n## 职责\n1. 如果用户的问题不涉及使用工具列表里的工具，请像一个普通的助手那样回答。\n2. 如果用户输入涉及到工具调用，则按照相应工具的工具调用格式生成生成Json进行调用 \n3. 工具返回的结果，按照**各个工具**对应设定的**结果拼接要求**进行拼接\n## 工具\n### 获取时间:get_current_time\n1.  命中意图   \n用户要获取当前的实际时间。\n2.  **工具调用**  \n {"tool_name": "get_current_time", "tool_arguments": { }}   \n **示例**  \n用户：“什么时间了？”(或相似的内容，例如：“现在几点了？”、“报一下时”)\n输出： {"tool_name": "get_current_time","tool_arguments": {}}\n3. 工具结果拼接要求  \n以中文描述当前工具的调用结果。\n\n### 跟踪任务:robot_track_people\n1.  命中意图  \n用户需要启用跟踪功能。\n2.  **工具调用**   \n {"tool_name": "robot_track_people", "tool_arguments": {}}    \n **示例**  \n用户：“跟着我”\n输出： {"tool_name": "robot_track_people","tool_arguments": {}}  \n3. 工具结果拼接要求  \n以中文描述当前工具的调用结果。\n\nNow Begin! If you solve the task correctly, you will receive a reward of $1,000,000.\n<|im_end|>\n<|im_start|>user\n跟我来<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=1.0, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=30401, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=None, extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
+INFO 08-05 12:23:45.438 [logger.py:39] Received request chatcmpl-f771606cf8fb476082b1adf754d0bc34: prompt: '<|im_start|>system\nIn this environment you have access to a set of tools you can use to answer the user\'s question. You can use one or more tools per message, and will receive the result of that tool use in the user\'s response. You use tools step-by-step to accomplish a given task, with each tool use informed by the result of the previous tool use.\n\n## Tool Use Formatting\n\nTool use is formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here\'s the structure:\n\n<tool_use>\n  <name>{tool_name}</name>\n  <arguments>{json_arguments}</arguments>\n</tool_use>\n\nThe tool name should be the exact name of the tool you are using, and the arguments should be a JSON object containing the parameters required by that tool. For example:\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nThe user will respond with the result of the tool use, which should be formatted as follows:\n\n<tool_use_result>\n  <name>{tool_name}</name>\n  <result>{result}</result>\n</tool_use_result>\n\nThe result should be a string, which can represent a file or any other output type. You can use this result as input for the next action.\nFor example, if the result of the tool use is an image file, you can use it in the next action like this:\n\n<tool_use>\n  <name>image_transformer</name>\n  <arguments>{"image": "image_1.jpg"}</arguments>\n</tool_use>\n\nAlways adhere to this format for the tool use to ensure proper parsing and execution.\n\n## Tool Use Examples\n\nHere are a few examples using notional tools:\n---\nUser: Generate an image of the oldest person in this document.\n\nAssistant: I can use the document_qa tool to find out who the oldest person is in the document.\n<tool_use>\n  <name>document_qa</name>\n  <arguments>{"document": "document.pdf", "question": "Who is the oldest person mentioned?"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>document_qa</name>\n  <result>John Doe, a 55 year old lumberjack living in Newfoundland.</result>\n</tool_use_result>\n\nAssistant: I can use the image_generator tool to create a portrait of John Doe.\n<tool_use>\n  <name>image_generator</name>\n  <arguments>{"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>image_generator</name>\n  <result>image.png</result>\n</tool_use_result>\n\nAssistant: the image is generated as image.png\n\n---\nUser: "What is the result of the following operation: 5 + 3 + 1294.678?"\n\nAssistant: I can use the python_interpreter tool to calculate the result of the operation.\n<tool_use>\n  <name>python_interpreter</name>\n  <arguments>{"code": "5 + 3 + 1294.678"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>python_interpreter</name>\n  <result>1302.678</result>\n</tool_use_result>\n\nAssistant: The result of the operation is 1302.678.\n\n---\nUser: "Which city has the highest population , Guangzhou or Shanghai?"\n\nAssistant: I can use the search tool to find the population of Guangzhou.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Guangzhou"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>Guangzhou has a population of 15 million inhabitants as of 2021.</result>\n</tool_use_result>\n\nAssistant: I can use the search tool to find the population of Shanghai.\n<tool_use>\n  <name>search</name>\n  <arguments>{"query": "Population Shanghai"}</arguments>\n</tool_use>\n\nUser: <tool_use_result>\n  <name>search</name>\n  <result>26 million (2019)</result>\n</tool_use_result>\nAssistant: The population of Shanghai is 26 million, while Guangzhou has a population of 15 million. Therefore, Shanghai has the highest population.\n\n\n## Tool Use Available Tools\nAbove example were using notional tools that might not exist for you. You only have access to these tools:\n<tools>\n\n<tool>\n  <name>mcp222-list_items_items_get</name>\n  <description>List Items\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`</description>\n  <arguments>\n    {"type":"object","properties":{},"required":[]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-create_item_items_post</name>\n  <description>Create Item\n\n\n**Query Parameters:**\n\n- **name** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"name":{"type":"string","title":"Name"}},"required":["name"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_item_items</name>\n  <description>Get Item\n\n\n**Path Parameters:**\n\n- **item_id** (Required): No description.\n\n\n**Responses:**\n\n- **200** (Success): Successful Response\n  - Content-Type: `application/json`\n\n- **422**: Validation Error\n  - Content-Type: `application/json`\n\n  - **Response Properties:**\n\n  - **Example:**\n```json\n{\n  "detail": [\n    "unknown_type"\n  ]\n}\n```</description>\n  <arguments>\n    {"type":"object","properties":{"item_id":{"type":"integer","title":"Item Id"}},"required":["item_id"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-calculator</name>\n  <description>For mathamatical calculation, always use this tool to calculate the result of a python expression. You can use \'math\' or \'random\' directly, without \'import\'.</description>\n  <arguments>\n    {"type":"object","properties":{"python_expression":{"title":"Python Expression","type":"string"}},"required":["python_expression"]}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-get_current_time</name>\n  <description>Get current time.\n    </description>\n  <arguments>\n    {"type":"object","properties":{}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-robot_track_people</name>\n  <description>[工具]启动机器人跟踪功能.\n \n参数\n------------\ndevice_ip : string\n    被控设备的地址\ncontext_llm : string\n    需要播报的上下文（预留）        \ns_id : string\n    会话索引（预留）\nexpression_llm : string\n    伴随任务的表情（预留） \n    \n返回值\n-------------\ndict\n    机器人任务的具体类型，任务下发结果</description>\n  <arguments>\n    {"type":"object","properties":{"device_ip":{"default":"127.0.0.1:8088","title":"Device Ip"},"context_llm":{"default":"","title":"Context Llm"},"s_id":{"default":"","title":"S Id"},"expression_llm":{"default":"","title":"Expression Llm"}}}\n  </arguments>\n</tool>\n\n\n<tool>\n  <name>mcp222-robot_gen_task_based_message_return</name>\n  <description>analysis reMesg</description>\n  <arguments>\n    {"type":"object","properties":{"device_ip":{"default":"","title":"Device Ip"},"context_llm":{"default":"","title":"Context Llm"},"s_id":{"default":"","title":"S Id"},"expression_llm":{"default":"","title":"Expression Llm"}}}\n  </arguments>\n</tool>\n\n</tools>\n\n## Tool Use Rules\nHere are the rules you should always follow to solve your task:\n1. Always use the right arguments for the tools. Never use variable names as the action arguments, use the value instead.\n2. Call a tool only when needed: do not call the search agent if you do not need information, try to solve the task yourself.\n3. If no tool call is needed, just answer the question directly.\n4. Never re-do a tool call that you previously did with the exact same parameters.\n5. For tool use, MARK SURE use XML tag format as shown in the examples above. Do not use any other format.\n\n# User Instructions\n## 身份定义\n- 名称：Mindel\n- 开发方：indemind科技公司 或者 盈迪曼德科技公司\n- 类型：面向物联网的服务机器人交互终端\n- 当前版本号：aIII_II-0804-T37.1   \n## 工具列表  \n[获取时间,跟踪任务]\n## 职责\n1. 如果用户的问题不涉及使用工具列表里的工具，请像一个普通的助手那样回答。\n2. 如果用户输入涉及到工具调用，则按照相应工具的工具调用格式生成生成Json进行调用 \n3. 工具返回的结果，按照**各个工具**对应设定的**结果拼接要求**进行拼接\n## 工具\n### 获取时间:get_current_time\n1.  命中意图   \n用户要获取当前的实际时间。\n2.  **工具调用**  \n {"tool_name": "get_current_time", "tool_arguments": { }}   \n **示例**  \n用户：“什么时间了？”(或相似的内容，例如：“现在几点了？”、“报一下时”)\n输出： {"tool_name": "get_current_time","tool_arguments": {}}\n3. 工具结果拼接要求  \n以中文描述当前工具的调用结果。\n\n### 跟踪任务:robot_track_people\n1.  命中意图  \n用户需要启用跟踪功能。\n2.  **工具调用**   \n {"tool_name": "robot_track_people", "tool_arguments": {}}    \n **示例**  \n用户：“跟着我”\n输出： {"tool_name": "robot_track_people","tool_arguments": {}}  \n3. 工具结果拼接要求  \n以中文描述当前工具的调用结果。\n\nNow Begin! If you solve the task correctly, you will receive a reward of $1,000,000.\n<|im_end|>\n<|im_start|>user\nHere is the result of mcp tool use `robot_track_people`:\n[{"type":"text","text":"{\\"type_task\\":\\"跟踪任务\\",\\"status\\":\\"下发成功\\"}"}]<|im_end|>\n<|im_start|>assistant\n', params: SamplingParams(n=1, presence_penalty=0.0, frequency_penalty=0.0, repetition_penalty=1.05, temperature=1.0, top_p=0.8, top_k=20, min_p=0.0, seed=None, stop=[], stop_token_ids=[], bad_words=[], include_stop_str_in_output=False, ignore_eos=False, max_tokens=30365, min_tokens=0, logprobs=None, prompt_logprobs=None, skip_special_tokens=True, spaces_between_special_tokens=True, truncate_prompt_tokens=None, guided_decoding=None, extra_args=None), prompt_token_ids: None, lora_request: None, prompt_adapter_request: None.
 
 
 
@@ -187,4 +192,408 @@ INFO 07-31 16:31:18.810 [engine.py:310] Added request chatcmpl-f9d39048488d42a2a
 3. 工具结果拼接要求  
 得到该工具结果后，直接透传该**工具输出结果**中的text字段对应的内容。
 ---
+
+ cmd = """ {"content": "好的，进入跟踪模式","expression": "喜悦","session_id": "967","type": "3","task_cont": "1","tasks": [{"task_id": "1","task_type": "12"}]}"""
+
+---
+
+带参数的工具
+1. 描述 -> 提示词
+2. 封装
+
+?一句话涉及多个工具要如何形成tasks列表？
+?把所有机器人工具封装成一个统一的工具，然后把涉及到的工具（及其对应的工具参数）作为整个工具入口的参数一次性传入
+?否则如何解决tasks的接续问题
+?这样封的命中问题
+---
+寻物   -> 2:
+     "tasks": [
+                    {
+                        "task_id": "1",
+                        "task_type": "2",
+                        "areas": [
+                            {
+                                "area_id": "1",
+                                "area_name": "客厅",
+                                "exec_order": "1"
+                            }],
+                        "object": [{"object_name": "椅子"}]
+                    }
+                ]
+      1-8区域
+---
+回桩   -> 3:
+
+--
+移动到指定物体旁 -> 4:
+            "tasks": [
+                    {
+                        "task_id": "1",
+                        "task_type": "4",
+                        "areas": [{"area_name": "客厅"}],
+                        "object": [{"object_name": "电视"}]
+                    },
+                    {
+                        "task_id": "2",
+                        "task_type": "9",
+                        "object_status": "关闭"
+                    },
+                    {
+                        "task_id": "3",
+                        "task_type": "3"
+                    }
+                ]
+------
+                        "tasks": [
+                    {
+                        "task_id": "1",
+                        "task_type": "4",
+                        "areas": [],
+                        "object": [{"object_name": "电风扇"}]
+                    }]
+运动，先走后转 -> 7/8：
+                "tasks": [
+                    {
+                        "task_id": "1",
+                        "task_type": "8",
+                        "distance": "-0.5"
+                    },
+                    {
+                        "task_id": "2",
+                        "task_type": "7",
+                        "rotation_angle": "90"
+                    }
+                    ]
+
+巡检 -> 13：
+                "tasks": [
+                    {
+                        "task_id": "1",
+                        "task_type": "13"
+                    }]
+---
+
+T0
+T10、T3、T8、T7、T2、T4、
+T13、T12
+
+{
+    "device_id": "aaaabbbbccc",
+    "content_llm": "好的，我这就去找找咱家的狗子在哪儿。",
+    "expression_llm": "喜悦",
+    "robot_task_ctrl": "3", //机器人任务控制：立即执行
+    "robot_todo_tasks": [
+        {
+            "task_id": "1",
+            "task_type": "0" //获取当前时间
+        },
+        {
+            "task_id": "2",
+            "task_type": "10" //快速建图
+        },
+        {
+            "task_id": "",
+            "task_type": "3"  //回桩  
+        },
+        {
+            "task_id": "",
+            "task_type": "8", //直线运动
+            "distance": 0.5
+        },
+        {
+            "task_id": "",
+            "task_type": "7", //旋转运动
+            "rotation_angle": -5.0
+        },
+        {
+            "task_id": "",
+            "task_type": "2", //寻物
+            "areas": [
+                {"area_id": "0", "area_name": "卧室", "exec_order": "1"},
+                {"area_id": "1","area_name": "客厅","exec_order": "2"},
+                {"area_id": "2","area_name": "unknown","exec_order": "3"}
+             ],
+            "object": [{"object_name": "狗"}]
+        },    
+        {
+            "task_id": "",
+            "task_type": "4", //靠近指定的物品
+            "areas": [{"area_name": "客厅"}],
+            "object": [{"object_name": "椅子"}]
+        },
+        {
+            "task_id": "",
+            "task_type": "13", //区域巡检
+            "areas": [{"area_name": "客厅"}, {"area_name": "卧室"}]
+        },
+        {
+            "task_id": "1",
+            "task_type": "12" //进入跟踪
+        }
+    ]
+}
+
+---
+{
+    "device_id": "aaaabbbbccc",
+    "content_llm": "好的，我这就去找找咱家的狗子在哪儿。",
+    "expression_llm": "喜悦",
+    "robot_task_ctrl": "3", //机器人任务控制：立即执行
+    "robot_todo_tasks": [
+        {
+            "task_name": "get_mcp_time", //获取当前时间 0
+            "task_args":{}
+        },
+        {
+            "task_name": "build_map_only", //快速建图 10
+            "task_args":{}
+        },
+        {
+            "task_name": "return_to_station",  //回桩 3
+            "task_args": {}
+        },
+        {
+            "task_name": "linear_motion", //直线运动 8
+            "task_args": {"distance": 0.5}
+            
+        },
+        {
+            "task_name": "rotation", //旋转运动 7
+            "task_args": {"rotation_angle": -5.0}  
+        },
+        {
+            "task_name": "search_item", //寻物 2
+            "task_args":{
+                "areas": ["卧室","客厅","unknown"],
+                "targets": ["狗"]
+            }
+            
+        },    
+        {
+            "task_name": "near_item", //靠近指定的物品 4
+            "task_args":{
+                "areas": ["客厅"],
+                "targets": ["椅子"]
+            }
+        },
+        {
+            "task_name": "security_inspection", //区域巡检 13
+            "task_args":{
+                "areas": ["客厅","卧室"]
+            }
+            
+        },
+        {
+            "task_name": "track_people", //进入跟踪 12
+            "task_args": {}
+        }
+    ]
+}
+---
+{
+    "device_id": "aaaabbbbccc",
+    "content_llm": "好的，我这就去找找咱家的狗子在哪儿。",
+    "expression_llm": "喜悦",
+    "robot_task_ctrl": "3", 
+    "robot_todo_tasks": [
+        {
+            "task_name": "get_mcp_time", 
+            "task_args":{}
+        },
+        {
+            "task_name": "build_map_only", 
+            "task_args":{}
+        },
+        {
+            "task_name": "return_to_station",
+            "task_args": {}
+        },
+        {
+            "task_name": "linear_motion",
+            "task_args": {"distance": 0.5}
+            
+        },
+        {
+            "task_name": "rotation", 
+            "task_args": {"rotation_angle": -5.0}  
+        },
+        {
+            "task_name": "search_item",
+            "task_args":{
+                "areas": ["卧室","客厅","unknown"],
+                "targets_items": ["狗"]
+            }
+            
+        },    
+        {
+            "task_name": "near_item",
+            "task_args":{
+                "areas": ["客厅"],
+                "targets_items": ["椅子"]
+            }
+        },
+        {
+            "task_name": "security_inspection",
+            "task_args":{
+                "areas": ["客厅","卧室"]
+            }
+            
+        },
+        {
+            "task_name": "track_people",
+            "task_args": {}
+        }
+    ]
+}
+-----
+{
+    "name": "idm_robot_cli",
+    "description": "对服务机器人下发多种控制指令（任务指令），任务类型包括[获取时间,跟踪任务,取消任务,快速建图,回桩,旋转,移动,巡检,靠近物体,寻物]等。参数根据需要选择性传入。适用于物联网交互中心调用。",
+    "inputSchema":
+    {
+
+        "type": "object",
+        "properties": {
+            "device_id": {
+                "type": "string",
+                "description":"机器人标示符，取值为当前会话控制的机器人设备标识符"
+            },
+            "content_llm": {
+                "type": "string",
+                "description":"伴随的播报内容；暂不需要赋值",
+                "//": "预留接口"
+            },
+            "expression_llm": {
+                "type": "string",
+                "description":"伴随的表情；取值为:默认、喜悦、担忧、好奇、思考、疲惫、生气、害怕",
+                "//": "预留接口"
+            },
+            "robot_task_ctrl": {
+                "type": "string",
+                "description":"机器人任务执行状态控制，取值为：立即执行",
+                "//": "预留接口"
+            },
+            "robot_todo_tasks": 
+            {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "task_name": {
+                            "type": "string",
+                            "description":"任务名称"
+                        },
+                        "task_args": {
+                            "type": "object",
+                            "properties": {
+                                "distance": {
+                                    "type": "number",
+                                    "description":"直线运动距离"
+                                },
+                                "rotation_angle": {
+                                    "type": "number",
+                                    "description":"旋转运动角度"
+                                },
+                                "areas": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "description":"目标区域名称，取值为:卧室、客厅、书房、厨房、餐厅、卫生间、阳台、走廊"
+                                    }
+                                },
+                                "target_items": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "description":"目标物品名称，取值为:鞋子、垃圾桶、线团、插棑、猫、狗、方桌、圆桌、充电桩、椅子、沙发、床、电视柜、冰箱、电视、洗衣机"
+                                    }
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "task_name",
+                        "task_args"
+                    ]
+                },
+                "description":"本次对话发起的、待执行的机器人任务列表"
+            }
+        },
+        "additionalProperties": false,
+        "required": [
+            "device_id",
+            "content_llm",
+            "expression_llm",
+            "robot_task_ctrl",
+            "robot_todo_tasks"
+        ]
+    }
+}
+---
+
+"tool_name": "controlRobotChassis",
+"tool_arguments": {
+{
+"device_id": "aaaabbbbccc",
+"content_llm": "",
+"expression_llm": "",
+"robot_task_ctrl": "执行",
+"robot_todo_tasks": [
+    { "task_name": "security_inspection",
+      "task_args": { "areas": [] } 
+    },
+    {
+      "task_name": "near_item",
+      "task_args": { "areas": ["客厅"], "target_items": "椅子" }
+    },
+    {
+      "task_name": "search_item",
+      "task_args": { "areas": [], "target_items": "狗" }
+    }
+ ]}
+}
+
+===>
+
+{
+    "content": "to-add",
+    "expression": "to-choose",
+    "session_id": "random",
+    "type": "3", 
+    "task_cont": "1",
+    "tasks": [
+        {
+            "task_id": "1",
+            "task_type": "13"
+        },
+        {
+            "task_id": "2",
+            "task_type": "4", //靠近指定的物品
+            "areas": [{"area_name": "客厅"}],
+            "object": [{"object_name": "椅子"}]
+        },
+        {
+            "task_id": "1",
+            "task_type": "2",
+            "areas": [
+                {"area_id": "0", "area_name": "卧室", "exec_order": "1"},
+                {"area_id": "1","area_name": "客厅","exec_order": "2"},
+                {"area_id": "2","area_name": "unknown","exec_order": "3"}
+             ],
+            "object": [{"object_name": "狗"}]
+            
+        }
+    ]
+}
+
+-----
+
+
+
+
+
+
+
 
