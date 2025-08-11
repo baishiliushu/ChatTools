@@ -216,6 +216,8 @@ cat simplier_dailog_vllm-25_07_08-17_49_41.log  |  awk -F'<\\|im_start\\|>user' 
 ----
 纯数字
 grep -b -n -P '"task_type":\d+\}\]\}' vllm-25_07_16-21_56_21-14B.log
+cat logs/vllm.log | grep -P '"(?=[^"]*找)(?=[^"]*狗)[^"]*"'
 
+<|im_end|>\n<|im_start|>user\n{"reMsg_type":"1","session_id":"351","tasks":[{"notice_word":"","task_id":"1","task_state":"3","task_subState":"2","task_type":"2"}]}<|im_end|>\n<|im_start|>assistant\n{\n    "content": "已经在客厅找到了鞋子",\n    "expression": "喜悦",\n    "session_id": "351",\n    "type": "2"\n}<|im_end|>\n<|im_start|>user\n小乐乐<|im_end|>\n<|im_start|>assistant\n{\n    "content": "你是叫我呢？有啥事儿尽管说哈。",\n    "expression": "喜悦",\n    "session_id": "352",\n    "type": "2"\n}<|im_end|>\n<|im_start|>user\n{"reMsg_type":"1","session_id":"351","tasks":[{"notice_word":"","task_id":"1","task_state":"3","task_subState":"2","task_type":"2"}]}<|im_end|>\n<|im_start|>assistant\n{\n    "content": "已经在客厅找到了鞋子",\n    "expression": "喜悦",\n    "session_id": "351",\n    "type": "2"\n}<|im_end|>\n<|im_start|>user\n{"reMsg_type":"1","session_id":"351","tasks":[{"notice_word":"","task_id":"1","task_state":"3","task_subState":"2","task_type":"2"}]}<|im_end|>\n<|im_start|>assistant\n{\n    "content": "已经在客厅找到了鞋子",\n    "expression": "喜悦",\n    "session_id": "351",\n    "type": "2"\n}<|im_end|>\n<|im_start|>user\n三百五十套子还告诉厕所<|im_end|>\n<|im_start|>assistant\n{\n    "content": "俺听不懂你说的是啥意思，你能再说清楚点儿不？",\n    "expression": "担忧",\n    "session_id": "353",\n    "type": "2"\n}<|im_end|>\n<|im_start|>user\n找找咱家狗在哪儿<|im_end|>\n<|im_start|>assistant\n', params: 
 ---
 
