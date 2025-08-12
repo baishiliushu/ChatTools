@@ -38,6 +38,7 @@ class LocalMCPClient:
             "设备indemind, 先去书房找一下插排，然后回到充电桩",
             "设备indemind, 先去卧室找一下垃圾桶，找到后再去客厅找电视，然后回桩"
         ]
+        self.mcp_mode = os.getenv("MCP_MODE", "stdio")  # stdio, sse, shttp
 
     async def initialize_http_session(self):
         if not self.http_session:
@@ -188,8 +189,11 @@ class LocalMCPClient:
                     continue
                 if query.lower() == 'quit':
                     break
-                response_text = await self.process_query(query)
-                print(f"\n🤖 Assistant: {response_text}")
+                if query.lower() == 'ttt':
+                    await self.run_batch_test()
+                else:
+                    response_text = await self.process_query(query)
+                    print(f"\n🤖 Assistant: {response_text}")
             except KeyboardInterrupt:
                 print("\n检测到中断，正在退出...")
                 break
@@ -229,20 +233,97 @@ class LocalMCPClient:
         await self.exit_stack.aclose()
         print("连接已关闭。")
 
+    async def _connect_stdio(self, server_script_path: str):
+        """使用stdio模式连接"""
+        if not os.path.isfile(server_script_path):
+            raise FileNotFoundError(f"MCP Server 脚本未找到: {server_script_path}")
+
+        command = "python" if server_script_path.endswith('.py') else "node"
+        server_params = StdioServerParameters(
+            command=command,
+            args=[server_script_path],
+            env=os.environ.copy()
+        )
+
+        try:
+            stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
+            stdio_reader, stdio_writer = stdio_transport
+            self.mcp_session = ClientSession(stdio_reader, stdio_writer)
+            await self._initialize_session()
+        except Exception as e:
+            print(f"❌ 使用 stdio 模式连接到 MCP Server 失败: {e}")
+            raise
+
+    async def _connect_sse(self, sse_url: str):
+        """使用SSE模式连接"""
+        try:
+            sse_transport = await self.exit_stack.enter_async_context(sse_client(sse_url))
+            sse_reader, sse_writer = sse_transport
+            self.mcp_session = ClientSession(sse_reader, sse_writer)
+            await self._initialize_session()
+        except Exception as e:
+            print(f"❌ 使用 SSE 模式连接到 MCP Server 失败: {e}")
+            raise
+
+    async def _connect_shttp(self, shttp_url: str):
+        """使用sHTTP模式连接"""
+        try:
+            shttp_transport = await self.exit_stack.enter_async_context(shttp_client(shttp_url))
+            shttp_reader, shttp_writer = shttp_transport
+            self.mcp_session = ClientSession(shttp_reader, shttp_writer)
+            await self._initialize_session()
+        except Exception as e:
+            print(f"❌ 使用 sHTTP 模式连接到 MCP Server 失败: {e}")
+            raise
+
+    async def connect_to_mcp(self, connection_param: Union[str, Dict]):
+        """连接到MCP服务器，支持三种模式"""
+        print(f"尝试使用 {self.mcp_mode.upper()} 模式连接到 MCP 服务器...")
+        
+        if self.mcp_mode == "stdio":
+            await self._connect_stdio(connection_param)
+        elif self.mcp_mode == "sse":
+            await self._connect_sse(connection_param)
+        elif self.mcp_mode == "shttp":
+            await self._connect_shttp(connection_param)
+        else:
+            raise ValueError(f"不支持的 MCP 模式: {self.mcp_mode}")
+
+    async def _initialize_session(self):
+        """初始化MCP会话"""
+        await self.exit_stack.enter_async_context(self.mcp_session)
+        await self.mcp_session.initialize()
+        response = await self.mcp_session.list_tools()
+        self.mcp_tools = response.tools
+        
+        if not self.mcp_tools:
+            print("⚠️ MCP Server 未报告任何可用工具。")
+        else:
+            print("✅ 已连接到 MCP Server，支持以下工具:", [tool.name for tool in self.mcp_tools])
+
 
 async def main():
     if len(sys.argv) < 3:
-        print("Usage: python client.py <path_to_mcp_server_script.py> <path_to_prompt.txt>")
+        print("Usage: python client.py <path_to_prompt.txt>")
         sys.exit(1)
 
-    mcp_server_script = sys.argv[1]
-    prompt_txt_path = sys.argv[2]
+    prompt_txt_path = sys.argv[1]
     client = LocalMCPClient(prompt_txt_path)
     try:
         await client.initialize_http_session()
-        await client.connect_to_mcp_server(mcp_server_script)
-        # await client.chat_loop()
-        await client.run_batch_test()
+        # 根据模式获取连接参数
+        mcp_mode = os.getenv("MCP_MODE", "stdio")
+        connection_param = ""
+        if mcp_mode == "stdio":
+            connection_param = os.getenv("MCP_STDIO_SCRIPT", "mcp_server.py")
+        elif mcp_mode == "sse":
+            connection_param = os.getenv("MCP_SSE_URL", "http://192.168.50.222:8087/sse")
+        elif mcp_mode == "shttp":
+            connection_param = os.getenv("MCP_SHTTP_URL", "http://192.168.50.222:8088/shttp")
+        
+        await client.connect_to_mcp(connection_param)
+        #await client.connect_to_mcp_server(mcp_server_script)
+        await client.chat_loop()
 
     finally:
         await client.cleanup()
