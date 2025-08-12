@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List
 import os
 
-mcp_mode = os.getenv("MCP_MODE", "stdio")
+
 # ---------------------------- 初始化 ----------------------------
 app = FastAPI()
 mcp = FastMCP.from_fastapi(app=app)
@@ -142,14 +142,15 @@ def port_digit(port_string, default_number):
     return port_number
 
 if __name__ == "__main__":
-    # 通过 stdio 运行，适配 MCP 连接器
-    if mcp_mode == "stdio":
+    mcp_mode_by_url = os.getenv("MCP_MODE_BY_URL", "stdio")
+    # 通过 环境变量 运行，适配 MCP 连接器
+    if ".py" in  mcp_mode_by_url:
         mcp.run("stdio")
-    elif mcp_mode == "sse":
-        url = os.getenv("MCP_SSE_URL", "http://192.168.50.222:8087/sse")
+    elif "sse" in  mcp_mode_by_url :
+        url = mcp_mode_by_url
         mcp.run(transport="sse", host=url.split("//")[-1].split("/")[0].split(":")[0], port=port_digit(url.split("//")[-1].split("/")[0].split(":")[-1], 8087), path="/{}".format(url.split("//")[-1].split("/")[-1]))
-    elif mcp_mode == "shttp":
-        url = os.getenv("MCP_SHTTP_URL", "http://192.168.50.222:8088/shttp")
+    elif "shttp" in  mcp_mode_by_url :
+        url = mcp_mode_by_url
         mcp.run(transport="streamable-http", host=url.split("//")[-1].split("/")[0].split(":")[0], port=port_digit(url.split("//")[-1].split("/")[0].split(":")[-1], 8088), path="/{}".format(url.split("//")[-1].split("/")[-1]))
 
 

@@ -10,10 +10,17 @@ from contextlib import AsyncExitStack
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.client.sse import sse_client
+from mcp.client.streamable_http import streamablehttp_client as shttp_client
 from dotenv import load_dotenv
+import logging
+import httpx
+from urllib.parse import urlparse
 
 # Load .env
 load_dotenv()
+logger = logging.getLogger("terminal_client")
+logging.basicConfig(level=logging.DEBUG)
 
 class LocalMCPClient:
     def __init__(self, prompt_file_path = "prompt.txt"):
@@ -38,7 +45,7 @@ class LocalMCPClient:
             "设备indemind, 先去书房找一下插排，然后回到充电桩",
             "设备indemind, 先去卧室找一下垃圾桶，找到后再去客厅找电视，然后回桩"
         ]
-        self.mcp_mode = os.getenv("MCP_MODE", "stdio")  # stdio, sse, shttp
+        self.mcp_mode = os.getenv("MCP_MODE_BY_URL", "mcp_server.py")  # stdio, sse, shttp
 
     async def initialize_http_session(self):
         if not self.http_session:
@@ -117,7 +124,7 @@ class LocalMCPClient:
         print(f"🔄 正在向 vLLM 发送请求 ({self.vllm_api_url})...")
         try:
             time_start_f = time.time()
-            async with self.http_session.post(self.vllm_api_url, headers=headers, json=payload, timeout=120) as response:
+            async with self.http_session.post(self.vllm_api_url, headers=headers, json=payload, timeout=300) as response:
                 if response.status == 200:
                     result = await response.json()
                     print(f"🔍 原始 vLLM 响应:\n{json.dumps(result, indent=2, ensure_ascii=False)}\n")
@@ -187,7 +194,7 @@ class LocalMCPClient:
                 query = input("\n你: ").strip()
                 if not query:
                     continue
-                if query.lower() == 'quit':
+                if query.lower() == 'quit' or query.lower() == 'q':
                     break
                 if query.lower() == 'ttt':
                     await self.run_batch_test()
@@ -233,6 +240,7 @@ class LocalMCPClient:
         await self.exit_stack.aclose()
         print("连接已关闭。")
 
+    
     async def _connect_stdio(self, server_script_path: str):
         """使用stdio模式连接"""
         if not os.path.isfile(server_script_path):
@@ -255,37 +263,52 @@ class LocalMCPClient:
             raise
 
     async def _connect_sse(self, sse_url: str):
-        """使用SSE模式连接"""
+        """使用SSE模式连接 url默认 http://192.168.50.222:8087/sse"""
         try:
+            os.environ.pop('ALL_PROXY', None)
+            os.environ.pop('all_proxy', None)
+                
             sse_transport = await self.exit_stack.enter_async_context(sse_client(sse_url))
             sse_reader, sse_writer = sse_transport
             self.mcp_session = ClientSession(sse_reader, sse_writer)
             await self._initialize_session()
         except Exception as e:
-            print(f"❌ 使用 SSE 模式连接到 MCP Server 失败: {e}")
+            print(f"❌ 使用 SSE 模式连接到 MCP Server 失败: {e} BY {sse_url}")
             raise
 
     async def _connect_shttp(self, shttp_url: str):
         """使用sHTTP模式连接"""
         try:
+            os.environ.pop('ALL_PROXY', None)
+            os.environ.pop('all_proxy', None)
             shttp_transport = await self.exit_stack.enter_async_context(shttp_client(shttp_url))
-            shttp_reader, shttp_writer = shttp_transport
+            shttp_reader = None
+            shttp_writer = None
+            shttp_get_session_id = None
+            if len(shttp_transport) > 1:
+                shttp_reader, shttp_writer, shttp_get_session_id = shttp_transport
+                #if rest:
+                    #print(f"[DDDD] Additional elements: {rest}")
+                    #shttp_get_session_id = rest[0]
+                    #exit(8)
+            else:
+                exit(-3)
             self.mcp_session = ClientSession(shttp_reader, shttp_writer)
             await self._initialize_session()
         except Exception as e:
             print(f"❌ 使用 sHTTP 模式连接到 MCP Server 失败: {e}")
             raise
 
-    async def connect_to_mcp(self, connection_param: Union[str, Dict]):
+    async def connect_to_mcp(self):
         """连接到MCP服务器，支持三种模式"""
         print(f"尝试使用 {self.mcp_mode.upper()} 模式连接到 MCP 服务器...")
-        
-        if self.mcp_mode == "stdio":
-            await self._connect_stdio(connection_param)
-        elif self.mcp_mode == "sse":
-            await self._connect_sse(connection_param)
-        elif self.mcp_mode == "shttp":
-            await self._connect_shttp(connection_param)
+        mcp_mode_by_url = self.mcp_mode
+        if ".py" in  mcp_mode_by_url:
+            await self._connect_stdio(mcp_mode_by_url)
+        elif "sse" in  mcp_mode_by_url:
+            await self._connect_sse(mcp_mode_by_url)
+        elif "shttp" in  mcp_mode_by_url:
+            await self._connect_shttp(mcp_mode_by_url)
         else:
             raise ValueError(f"不支持的 MCP 模式: {self.mcp_mode}")
 
@@ -303,26 +326,17 @@ class LocalMCPClient:
 
 
 async def main():
-    if len(sys.argv) < 3:
-        print("Usage: python client.py <path_to_prompt.txt>")
+    if len(sys.argv) < 2:
+        print("Usage: python client.py <path_to_prompt>")
         sys.exit(1)
 
     prompt_txt_path = sys.argv[1]
     client = LocalMCPClient(prompt_txt_path)
     try:
         await client.initialize_http_session()
-        # 根据模式获取连接参数
-        mcp_mode = os.getenv("MCP_MODE", "stdio")
-        connection_param = ""
-        if mcp_mode == "stdio":
-            connection_param = os.getenv("MCP_STDIO_SCRIPT", "mcp_server.py")
-        elif mcp_mode == "sse":
-            connection_param = os.getenv("MCP_SSE_URL", "http://192.168.50.222:8087/sse")
-        elif mcp_mode == "shttp":
-            connection_param = os.getenv("MCP_SHTTP_URL", "http://192.168.50.222:8088/shttp")
-        
-        await client.connect_to_mcp(connection_param)
         #await client.connect_to_mcp_server(mcp_server_script)
+      
+        await client.connect_to_mcp()
         await client.chat_loop()
 
     finally:
