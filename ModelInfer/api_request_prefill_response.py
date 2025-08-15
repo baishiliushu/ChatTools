@@ -8,10 +8,10 @@ INPUT_PATH = "./input1.txt"
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
 
-BASE_URL = "http://192.168.50.222:8000" 
+BASE_URL = "http://192.168.50.208:8000" 
 # 222 # 208 #/v1/chat/completions
 API_KEY = "mindo" 
-MODEL_NAME ="Qwen-Local-AWQ-7Bp"  # Qwen-Local-AWQ "Qwen-0.5B-AWQ" #"QwQ-32B-AWQ" 
+MODEL_NAME ="QwQ-32B-AWQ"  # Qwen-Local-AWQ-7Bp "Qwen-0.5B-AWQ" #"QwQ-32B-AWQ" 
 
 
 #BASE_URL = "https://api.deepseek.com" # v1/chat/completions
@@ -49,8 +49,11 @@ HEADERS = {
 }
 
 INSTERT_BEFORE = False
-OUT_TYPE = "text" # "json_object"  # text
-INPUT_CONTENT = """"""
+OUT_TYPE = "json_object" # "json_object"  # text
+INPUT_CONTENT = """{"reMsg_type": "1","session_id": "69","task": [{"notice_word":"","task_id": "1","task_state": "3","task_subState": "2","task_type": "1"}]}"""#"""就这么这么这么甜"""
+#"""{"reMsg_type": "1", "session_id": "69","task": [{"task_id": "1","task_type": "1","task_state": "3","‌notice_word": "请您吃饭","task_subState": "2"}]}"""
+#"""去叫卧室大家吃饭""" 
+#"""{"reMsg_type": "1", "session_id": "69","task": [{"task_id": "1","task_type": "1","task_state": "3","task_subState": "2"}]}"""
 
 def last_user_input(_json_head = INSTERT_BEFORE, _input = None):
     user_word = """分析下列矩阵的模式，并填写空缺处的数值（标记为?）：
@@ -197,10 +200,39 @@ find_prime_position(target) 函数：
 调用 find_prime_position(target) 函数计算其位置。
 输出结果。
 运行这段代码将会输出 438990637 是第多少个质数。"""},
-        {"role":"user", "content": "跳个舞"},
-        {"role": "assistant", "content": """{"content":"","expression":"喜悦","session_id":"113","type":"3","task_cont":"1","tasks":[{"task_id":"1","task_type":"15"}]}"""},
-        {"role":"user", "content": "跳个舞"},
-        {"role":"user", "content": "跳个个舞"},
+        {"role": "user", "content": "去卧室和客厅叫大家吃饭"},
+        {"role": "assistant", "content": """{
+                "content": "好的，马上去喊卧室和客厅里的人吃饭",
+                "expression": "喜悦",
+                "session_id": "69",
+                "type": "3",
+                "task_cont": "1",
+                "tasks": [
+                    {
+                        "task_id": "1",
+                        "task_type": "1",
+                        "areas": [
+                            {
+                                "area_id": "0",  
+                                "area_name": "卧室", 
+                                "exec_order": "1"
+                            },
+
+                            {
+                                "area_id": "1",  
+                                "area_name": "客厅", 
+                                "exec_order": "2"
+                            }
+                        ]
+                    },
+                    {
+                        "task_id": "2",
+                        "task_type": "3"
+                    }
+                ]
+            }"""},        
+        {"role": "user", "content": """{"reMsg_type": "1","session_id": "69","task": [{"notice_word":"","task_id": "1","task_state": "3","task_subState": "2","task_type": "1"}]}"""}, #robot
+        {"role": "assistant", "content": """{"content": "请您来吃饭","expression": "喜悦","session_id": "69","type": "2"}"""},
         {"role": "user", "content": last_user_input(_input = INPUT_CONTENT)},
         #{"role": "assistant", "content": "{\"content\": \""} #prefill要改模型chatmp，和nothink冲突
 

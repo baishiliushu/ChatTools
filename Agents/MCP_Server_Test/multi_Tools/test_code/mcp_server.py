@@ -12,7 +12,7 @@ import os
 app = FastAPI()
 mcp = FastMCP.from_fastapi(app=app)
 logger = logging.getLogger("luna_mcp")
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO) #level=logging.DEBUG
 
 # ---------------------------- prompt.md 对齐的枚举 ----------------------------
 AREAS = ["卧室", "客厅", "书房", "厨房", "餐厅", "卫生间", "阳台", "走廊", "unknown"]
@@ -139,6 +139,7 @@ def _require_nonzero(name: str, f: float) -> Tuple[bool, str]:
 
 # ✅ 固定返回三元组 (ok, msg, areas)
 def _validate_areas(areas: Optional[List[str]], required: bool = False) -> Tuple[bool, str, Optional[List[str]]]:
+
     if areas is None:
         if required:
             return False, "areas 不能为空，请至少指定 1 个区域。", None
@@ -146,8 +147,12 @@ def _validate_areas(areas: Optional[List[str]], required: bool = False) -> Tuple
     if not isinstance(areas, list):
         return False, "areas 需要为字符串列表。", None
     areas = _dedup_preserve([str(a).strip() for a in areas if str(a).strip()])
-    if required and not areas:
-        return False, "areas 不能为空，请至少指定 1 个区域。", None
+    if len(areas) < 1:
+        if not required:
+            return True, "", areas
+        else:
+            return False, "areas 不能为空，请至少指定 1 个区域。", None
+
     invalid = [a for a in areas if a not in AREAS]
     if invalid:
         return False, f"不支持的区域：{', '.join(invalid)}。可选：{', '.join(AREAS)}", None
@@ -176,12 +181,20 @@ def _areas_to_blocks(areas: List[str]) -> List[dict]:
 def _objects_to_blocks(objs: List[str]) -> List[dict]:
     return [{"object_name": o} for o in objs]
 
-# ---------------------------- 统一打印 task_json ----------------------------
+
+# ---------------------------- 统一打印（发送） task_json ----------------------------
+def send_task_to_device(device_id: str, task_json: dict):
+    logger.info("TO {} DO {}".format(device_id, json.dumps(task_json)))
+    send_rst = "success" 
+    #"success" / "fail"
+    return send_rst
+
 def _log_task_json(tool: str, device_id: str, task_json: dict, status: str, reason: str | None = None) -> None:
     """
     统一打印 task_json：单行 JSON，包含工具名、设备、状态与可选失败原因。
     status: "success" / "fail"
     """
+    status = send_task_to_device(device_id, task_json)
     payload = {
         "tool": tool,
         "deviceId": device_id,
@@ -198,7 +211,7 @@ def _log_task_json(tool: str, device_id: str, task_json: dict, status: str, reas
 
 # ---------------------------- Tools ----------------------------
 # 下发成功上一行的task_json为下发到设备端的json字段，需要补充下发逻辑, 下发失败前的task_json需要返回到agent中
-@mcp.tool(description="获取机器人当前时间（语聊播报）")
+@mcp.tool(description="获取机器人当前时间")
 def robotGetMcpTime(deviceId: str, content: str = "", expression: str = "") -> dict:
     ok, msg = _require_device(deviceId)
     if not ok:
@@ -228,6 +241,7 @@ def robotCreateMap(deviceId: str, content: str = "", expression: str = "") -> di
         _log_task_json("robotCreateMap", deviceId, task_json, "fail", "expression为空")
         return _build_response(deviceId, "robotCreateMap", "下发失败", "expression为空")
     task_json = _build_task(content or "ok，开始建图啦", expression or "喜悦", TC["Normal"], [{"task_id": "1", "task_type": TT["CreateMap"]}])
+    _log_task_json("robotCreateMap", deviceId, task_json, "success")
     return _build_response(deviceId, "robotCreateMap", "下发成功")
 
 @mcp.tool(description="返回充电桩")
@@ -338,7 +352,7 @@ def robotRotation(deviceId: str, rotationAngle: float, content: str = "", expres
 @mcp.tool(description="搜索物体（可选区域）")
 def robotSearchObject(deviceId: str,
                       targetObjects: List[str],
-                      areas: Optional[List[str]] = None,
+                      areas: Optional[List[str]] = [],
                       content: str = "",
                       expression: str = "") -> dict:
     ok, msg = _require_device(deviceId)
@@ -372,7 +386,7 @@ def robotSearchObject(deviceId: str,
 @mcp.tool(description="移动到物体附近（可选区域）")
 def robotMoveToObject(deviceId: str,
                       targetObjects: List[str],
-                      areas: Optional[List[str]] = None,
+                      areas: Optional[List[str]] = list(),
                       content: str = "",
                       expression: str = "") -> dict:
     ok, msg = _require_device(deviceId)
@@ -416,6 +430,35 @@ def robotTaskCancel(deviceId: str, content: str = "", expression: str = "") -> d
         return _build_response(deviceId, "robotTaskCancel", "下发失败", "expression为空")
     task_json = _build_task(content or "好的，停止任务", expression or "默认", TC["Clear"], [])
     return _build_response(deviceId, "robotTaskCancel", "下发成功")
+
+
+@mcp.tool(description="机器人进入寻人模式（可指定区域）")
+def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", areas: Optional[List[str]] = [],) -> dict:
+    ok, msg = _require_device(deviceId)
+    if not ok:
+        task_json = _build_broadcast(msg, "担忧")
+        _log_task_json("robotSearchPeople", deviceId or "", task_json, "fail", "deviceId为空")
+        return _build_response(deviceId, "robotLinearMotion", "下发失败", "deviceId为空")
+    ok, msg = _require_expression(expression)
+    if not ok:
+        task_json = _build_broadcast(msg, "担忧")
+        _log_task_json("robotSearchPeople", deviceId, task_json, "fail", "expression为空")
+        return _build_response(deviceId, "robotLinearMotion", "下发失败", "expression为空")
+    ok, msg, area_list = _validate_areas(areas, required=False)
+    if not ok:
+        task_json = _build_broadcast(msg, "担忧")
+        _log_task_json("robotSearchPeople", deviceId, task_json, "fail", "areas为空或非法")
+        return _build_response(deviceId, "robotMoveToObject", "下发失败", "areas为空或非法")
+    
+    if len(areas) < 1:
+        area_list = AREAS
+        
+    task_json = _build_task(content or "好的，进入寻人模式", expression or "喜悦", TC["Normal"],
+                                [{"task_id": "1", "task_type": TT["PersonSearch"],"areas": _areas_to_blocks(area_list) if area_list else []}])
+    _log_task_json("robotSearchPeople", deviceId, task_json, "success")
+    return _build_response(deviceId, "robotSearchPeople", "下发成功")
+
+
 
 
 # ---------------------------- 入口 ----------------------------

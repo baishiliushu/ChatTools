@@ -589,10 +589,20 @@ T13、T12
 }
 
 -----
+设备id：b0:ac:82:47:d0:1d , 左转1度
+设备 abc123 ，左转20 度再转回来
+@tool：获取当前听话人身份
+@tool：传话
+@tool：获取当前说话人身份
+@tool：获取任务执行结果
+@tool：获取地图信息 -> 点到点 = 地图参数映射 、A到B
+
+（robot感知：Speaker’s ID -”李先生” Role-””；robot执行结果 -> taskType:robotSearchObject,taskResult:在卧室找到目标；）
 
 
+快速建图（robot感知：Speaker’s ID -”李先生” Role-””；）
 
-
+别找了，去快速建图（robot感知：Speaker’s ID -”李先生” Role-””；robot执行结果 -> taskType:,taskResult:;）
 
 
 

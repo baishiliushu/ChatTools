@@ -104,7 +104,7 @@ class LocalMCPClient:
         payload = {
             "model": self.model_name,
             "messages": messages,
-            "max_tokens": 1024,
+            #"max_tokens": 90000,
             "temperature": 0.5,
         }
 
@@ -142,51 +142,77 @@ class LocalMCPClient:
             return None
 
     async def process_query(self, query: str) -> Optional[str]:
+        
         if not self.http_session:
             await self.initialize_http_session()
-
+        querrys = query.split("c+++")
+        if query.startswith("c+++") or len(self.chat_history) > 15:
+            #self.chat_history = []
+            await self.clear_chat_history()
+        query = querrys[-1]
+        if len(query) < 1:
+            return "EMPTY user words."
+        print(f"发送请求到模型: {query}")
         system_message = {"role": "system", "content": self.file_content}
         messages = [system_message] + self.chat_history + [{"role": "user", "content": query}]
         tools_for_llm = self.convert_mcp_tools_to_openai_format()
-
+        #print("openai mesages:\n{}".format(tools_for_llm))
         llm_response_data = await self.call_vllm_api(messages, tools=tools_for_llm)
 
-        if not llm_response_data or not llm_response_data.get("choices"):
+        if not llm_response_data:
             return "抱歉，我在思考时遇到了一些麻烦。"
+        if llm_response_data.get("choices"):
+                                                                                            
+            choice = llm_response_data["choices"][0]
+            message = choice["message"]
+            #delta = choice.get('content', {})
+            content = message.get("content")
+            tool_calls = message.get("tool_calls")
+            if tool_calls:
+                toll_index = 0
+                tool_name_contents = list()
+                tool_name_description = ""
+                tool_content_description = ""
+                
+                for toll_index in range(0, len(tool_calls)):
+                    tool_call = tool_calls[toll_index]
+                    tool_name = tool_call['function']['name']
+                    tool_args = json.loads(tool_call['function']['arguments'])
 
-        choice = llm_response_data["choices"][0]
-        message = choice["message"]
+                    print(f"🛠️ 真实 ToolCall: {tool_name}, 参数: {tool_args}")
+                    mcp_result = await self.mcp_session.call_tool(tool_name, tool_args)
+                    tool_content = mcp_result.content[0].text if mcp_result.content else "工具未返回任何内容。"
+                    tool_name_contents.append({"tool_name":tool_name, "tool_content":tool_content})
+                
+                for tc in tool_name_contents:
+                    tool_name_description = tool_name_description + ";" + tc["tool_name"]
+                    tool_content_description = tool_content_description + ";" + tc["tool_content"]
 
-        tool_calls = message.get("tool_calls")
-        if tool_calls:
-            tool_call = tool_calls[0]
-            tool_name = tool_call['function']['name']
-            tool_args = json.loads(tool_call['function']['arguments'])
+                tool_result_msg = {
+                        "role": "user",
+                        "content": f"工具 '{tool_name_description}' 执行完毕，返回：\n{tool_content_description}\n请回答用户的问题：'{query}'"
+                    }    
+                self.chat_history.extend([{"role": "user", "content": query}, message, tool_result_msg])
 
-            print(f"🛠️ 真实 ToolCall: {tool_name}, 参数: {tool_args}")
-            mcp_result = await self.mcp_session.call_tool(tool_name, tool_args)
-            tool_content = mcp_result.content[0].text if mcp_result.content else "工具未返回任何内容。"
+                final_response = await self.call_vllm_api([system_message] + self.chat_history)
+                if final_response and final_response.get("choices"):
+                    final_content = final_response["choices"][0]["message"].get("content")
+                    self.chat_history.append({"role": "assistant", "content": final_content})
+                    return final_content    
+                else:
+                    return "抱歉，处理工具结果时出错。" # 设备 b0:ac:82:47:d0:1d ,左转2度再转回来
 
-            tool_result_msg = {
-                "role": "user",
-                "content": f"工具 '{tool_name}' 执行完毕，返回：\n{tool_content}\n请回答用户的问题：'{query}'"
-            }
-
-            self.chat_history.extend([{"role": "user", "content": query}, message, tool_result_msg])
-
-            final_response = await self.call_vllm_api([system_message] + self.chat_history)
-            if final_response and final_response.get("choices"):
-                final_content = final_response["choices"][0]["message"].get("content")
-                self.chat_history.append({"role": "assistant", "content": final_content})
-                return final_content
             else:
-                return "抱歉，处理工具结果时出错。"
-
-        else:
-            llm_content = message.get("content", "").strip()
-            self.chat_history.extend([{"role": "user", "content": query}, message])
-            return llm_content
-
+                llm_content = message.get("content", "").strip()
+                self.chat_history.extend([{"role": "user", "content": query}, message])
+                return llm_content       
+                                                           
+    async def clear_chat_history(self):
+        l = len(self.chat_history)
+        self.chat_history = []
+        print("\n已清空（{}条）会话历史".format(l))
+        return len(self.chat_history)
+        
     async def chat_loop(self):
         print("\n🤖 本地 LLM + MCP 客户端已启动！输入 'quit' 退出")
         while True:
@@ -198,6 +224,8 @@ class LocalMCPClient:
                     break
                 if query.lower() == 'ttt':
                     await self.run_batch_test()
+                if  query.lower() == 'c':
+                    await self.clear_chat_history()
                 else:
                     response_text = await self.process_query(query)
                     print(f"\n🤖 Assistant: {response_text}")

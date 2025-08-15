@@ -3,7 +3,7 @@ from huggingface_hub import snapshot_download
 import os
 
 SAVE_PATH = "/home/leon/mount_point_c/LLM_models/"
-MODEL_NAMES = ["Qwen/Qwen2.5-7B-Instruct"]
+MODEL_NAMES = ["Qwen/Qwen2.5-14B-Instruct"]
 """
 MrezaPRZ/Qwen2.5-Coder-3B-grpo-llm_ex_syn_schema_ngram_250
 qingy2024/Qwen2.5-0.5B-Instruct-Draft
