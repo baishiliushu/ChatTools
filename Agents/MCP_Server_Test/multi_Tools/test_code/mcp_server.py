@@ -278,7 +278,7 @@ def robotSecurityInspection(deviceId: str, content: str = "", expression: str = 
     _log_task_json("robotSecurityInspection", deviceId, task_json, "success")
     return _build_response(deviceId, "robotSecurityInspection", "下发成功")
 
-@mcp.tool(description="跟踪人物")
+@mcp.tool(description="启动行人跟踪")
 def robotTrackPeople(deviceId: str, content: str = "", expression: str = "") -> dict:
     ok, msg = _require_device(deviceId)
     if not ok:
@@ -349,7 +349,7 @@ def robotRotation(deviceId: str, rotationAngle: float, content: str = "", expres
     _log_task_json("robotRotation", deviceId, task_json, "success")
     return _build_response(deviceId, "robotRotation", "下发成功")
 
-@mcp.tool(description="搜索物体（可选区域）")
+@mcp.tool(description="搜索物体（可指定：区域）")
 def robotSearchObject(deviceId: str,
                       targetObjects: List[str],
                       areas: Optional[List[str]] = [],
@@ -383,7 +383,7 @@ def robotSearchObject(deviceId: str,
     _log_task_json("robotSearchObject", deviceId, task_json, "success")
     return _build_response(deviceId, "robotSearchObject", "下发成功")
 
-@mcp.tool(description="移动到物体附近（可选区域）")
+@mcp.tool(description="移动到物体附近（可指定：区域）")
 def robotMoveToObject(deviceId: str,
                       targetObjects: List[str],
                       areas: Optional[List[str]] = list(),
@@ -432,8 +432,8 @@ def robotTaskCancel(deviceId: str, content: str = "", expression: str = "") -> d
     return _build_response(deviceId, "robotTaskCancel", "下发成功")
 
 
-@mcp.tool(description="机器人进入寻人模式（可指定区域）")
-def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", areas: Optional[List[str]] = [],) -> dict:
+@mcp.tool(description="启动寻人功能（可指定：寻找的区域范围、待发布的通知内容、被通知人）")
+def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", areas: Optional[List[str]] = [], notice_word: str = "", notified_party: str = "") -> dict:
     ok, msg = _require_device(deviceId)
     if not ok:
         task_json = _build_broadcast(msg, "担忧")
@@ -454,7 +454,7 @@ def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", ar
         area_list = AREAS
         
     task_json = _build_task(content or "好的，进入寻人模式", expression or "喜悦", TC["Normal"],
-                                [{"task_id": "1", "task_type": TT["PersonSearch"],"areas": _areas_to_blocks(area_list) if area_list else []}])
+                                [{"task_id": "1", "task_type": TT["PersonSearch"],"areas": _areas_to_blocks(area_list) if area_list else [], "notice_word": notice_word, "notified_party": notified_party}])
     _log_task_json("robotSearchPeople", deviceId, task_json, "success")
     return _build_response(deviceId, "robotSearchPeople", "下发成功")
 
