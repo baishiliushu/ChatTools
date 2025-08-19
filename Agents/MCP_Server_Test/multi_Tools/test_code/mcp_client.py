@@ -21,6 +21,19 @@ from urllib.parse import urlparse
 load_dotenv()
 logger = logging.getLogger("terminal_client")
 logging.basicConfig(level=logging.DEBUG)
+# 配置日志文件名（按时间生成）
+from datetime import datetime
+log_filename = datetime.now().strftime("../app_%Y%m%d_%H%M%S.log")
+# === 文件处理器（输出到日志文件）===
+file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+file_handler.setLevel(logging.DEBUG)  # 文件记录所有DEBUG及以上级别
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
+
 
 class LocalMCPClient:
     def __init__(self, prompt_file_path = "prompt.txt"):

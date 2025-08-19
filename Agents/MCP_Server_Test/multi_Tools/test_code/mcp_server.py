@@ -204,6 +204,7 @@ def _log_task_json(tool: str, device_id: str, task_json: dict, status: str, reas
     }
     # 使用 INFO 打印成功，WARNING 打印失败；中文不转义
     line = json.dumps(payload, ensure_ascii=False)
+    line = "*****\n" + line + "\n*****"
     if status == "fail":
         logger.warning(line)
     else:
@@ -349,8 +350,8 @@ def robotRotation(deviceId: str, rotationAngle: float, content: str = "", expres
     _log_task_json("robotRotation", deviceId, task_json, "success")
     return _build_response(deviceId, "robotRotation", "下发成功")
 
-@mcp.tool(description="搜索物体（可指定：区域）")
-def robotSearchObject(deviceId: str,
+@mcp.tool(description="直接搜索物体（可指定：区域）")
+def robotSearchObjectDirectly(deviceId: str,
                       targetObjects: List[str],
                       areas: Optional[List[str]] = [],
                       content: str = "",
@@ -433,22 +434,22 @@ def robotTaskCancel(deviceId: str, content: str = "", expression: str = "") -> d
 
 
 @mcp.tool(description="启动寻人功能（可指定：寻找的区域范围、待发布的通知内容、被通知人）")
-def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", areas: Optional[List[str]] = [], notice_word: str = "", notified_party: str = "") -> dict:
+def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", areas: Optional[List[str]] = [], notice_word: Optional[str] = "", notified_party: Optional[str] = "") -> dict:
     ok, msg = _require_device(deviceId)
     if not ok:
         task_json = _build_broadcast(msg, "担忧")
         _log_task_json("robotSearchPeople", deviceId or "", task_json, "fail", "deviceId为空")
-        return _build_response(deviceId, "robotLinearMotion", "下发失败", "deviceId为空")
+        return _build_response(deviceId, "robotSearchPeople", "下发失败", "deviceId为空")
     ok, msg = _require_expression(expression)
     if not ok:
         task_json = _build_broadcast(msg, "担忧")
         _log_task_json("robotSearchPeople", deviceId, task_json, "fail", "expression为空")
-        return _build_response(deviceId, "robotLinearMotion", "下发失败", "expression为空")
+        return _build_response(deviceId, "robotSearchPeople", "下发失败", "expression为空")
     ok, msg, area_list = _validate_areas(areas, required=False)
     if not ok:
         task_json = _build_broadcast(msg, "担忧")
         _log_task_json("robotSearchPeople", deviceId, task_json, "fail", "areas为空或非法")
-        return _build_response(deviceId, "robotMoveToObject", "下发失败", "areas为空或非法")
+        return _build_response(deviceId, "robotSearchPeople", "下发失败", "areas为空或非法")
     
     if len(areas) < 1:
         area_list = AREAS
@@ -457,6 +458,58 @@ def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", ar
                                 [{"task_id": "1", "task_type": TT["PersonSearch"],"areas": _areas_to_blocks(area_list) if area_list else [], "notice_word": notice_word, "notified_party": notified_party}])
     _log_task_json("robotSearchPeople", deviceId, task_json, "success")
     return _build_response(deviceId, "robotSearchPeople", "下发成功")
+
+
+def _check_object_index(name: str):
+    """检查name是否在OBJECTS中，存在返回下标，否则返回10086"""
+    if str(name) in OBJECTS:
+        return OBJECTS.index(str(name))
+    else:
+        return 10086
+
+
+def _bigs_to_blocks(bigs: List[str])-> List[dict]:
+    return  [{"object_id": str(idx), "object_name": str(name), "area_id": "{}".format(_check_object_index(name)), "exec_order": str(idx + 1)} for idx, name in enumerate(bigs)]
+
+
+#带腿家具 + 底部藏匿物（Raised Furniture + Under-stored Objects）
+#下方藏匿待寻找物体->目标隐匿物 => 探查基体 下方的 目标隐匿物 inspection bases + Targeted Concealment 
+#Initiate scan protocol for targeted concealments beneath inspection bases ; beneath raised furniture
+@mcp.tool(description="寻找藏匿在家具下方的目标物体（参数 targetObject：被寻找物体; 参数 raisedFurnitures：有一定高度的、可以藏住被寻物体的物体列表; 上述两个参数都要在合法物体的范围里）")
+def robotSearchObjectBeneathFurnitures(deviceId: str, targetObject: str, raisedFurnitures: List[str], content: str = "", expression: str = ""):
+    _tool_name = "robotSearchObjectBeneathFurnitures"
+    ok, msg = _require_device(deviceId)
+    if not ok:
+        task_json = _build_broadcast(msg, "担忧")
+        _log_task_json(_tool_name, deviceId or "", task_json, "fail", "deviceId为空")
+        return _build_response(deviceId, _tool_name, "下发失败", "deviceId为空")
+    if not isinstance(raisedFurnitures, list) or len(raisedFurnitures) < 1:
+        msg = "raisedFurnitures非法"
+        _log_task_json(_tool_name, deviceId or "", task_json, "fail", msg)
+        return _build_response(deviceId, _tool_name, "下发失败", msg)
+    
+    for i in raisedFurnitures:
+        if _check_object_index(i) == 10086:
+            msg = "上方物体不在合法范围"
+            _log_task_json(_tool_name, deviceId or "", task_json, "fail", msg)
+            return _build_response(deviceId, _tool_name, "下发失败", msg)
+    
+    if _check_object_index(targetObject) == 10086:
+        msg = "目标物体不在合法范围"
+        _log_task_json(_tool_name, deviceId or "", task_json, "fail", msg)
+        return _build_response(deviceId, _tool_name, "下发失败", msg)
+
+    if not isinstance(targetObject, str) or not targetObject.strip():
+        msg = "targetObject非法"
+        _log_task_json(_tool_name, deviceId or "", task_json, "fail", msg)
+        return _build_response(deviceId, _tool_name, "下发失败", msg)
+    
+    task_json = _build_task(content or "好的，我准备出发啦", expression or "喜悦", TC["Normal"],
+                            [{"task_id": "1", "task_type": TT["FindObjInSemanticObj"],
+                              "big_objects": _bigs_to_blocks(raisedFurnitures) if raisedFurnitures else [],
+                              "small_object": {"object_id":"{}".format(_check_object_index(targetObject)), "object_name":targetObject}}])
+    _log_task_json("robotMoveToObject", deviceId, task_json, "success")
+    return _build_response(deviceId, _tool_name, "下发成功")
 
 
 
