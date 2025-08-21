@@ -7,6 +7,8 @@ import random
 import uuid
 import json  # 新增：用于打印 task_json
 import os
+from typing import List, Optional, Annotated
+from pydantic import Field
 
 # ---------------------------- 初始化 ----------------------------
 app = FastAPI()
@@ -15,6 +17,7 @@ logger = logging.getLogger("luna_mcp")
 logging.basicConfig(level=logging.INFO) #level=logging.DEBUG
 
 # ---------------------------- prompt.md 对齐的枚举 ----------------------------
+SUCCUSS_WORD = "已下发执行中"
 AREAS = ["卧室", "客厅", "书房", "厨房", "餐厅", "卫生间", "阳台", "走廊", "unknown"]
 
 OBJECTS = [
@@ -81,7 +84,7 @@ def _build_task(content: str,
     }
 
 # ---------------------------- 返回结构工具函数 ----------------------------
-def _build_response(device_id: str, task_type: str, status: str = "下发成功",
+def _build_response(device_id: str, task_type: str, status: str = SUCCUSS_WORD,
                     message: str = "", error_code: str | None = None) -> dict:
     detail = {
         "requestId": str(uuid.uuid4()),
@@ -227,7 +230,7 @@ def robotGetMcpTime(deviceId: str, content: str = "", expression: str = "") -> d
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     task_json = _build_broadcast(f"当前时间：{now}", expression or "喜悦")
     _log_task_json("robotGetMcpTime", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotGetMcpTime", "下发成功")
+    return _build_response(deviceId, "robotGetMcpTime", SUCCUSS_WORD)
 
 @mcp.tool(description="快速建图")
 def robotCreateMap(deviceId: str, content: str = "", expression: str = "") -> dict:
@@ -243,7 +246,7 @@ def robotCreateMap(deviceId: str, content: str = "", expression: str = "") -> di
         return _build_response(deviceId, "robotCreateMap", "下发失败", "expression为空")
     task_json = _build_task(content or "ok，开始建图啦", expression or "喜悦", TC["Normal"], [{"task_id": "1", "task_type": TT["CreateMap"]}])
     _log_task_json("robotCreateMap", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotCreateMap", "下发成功")
+    return _build_response(deviceId, "robotCreateMap", SUCCUSS_WORD)
 
 @mcp.tool(description="返回充电桩")
 def robotReturnToStation(deviceId: str, content: str = "", expression: str = "") -> dict:
@@ -260,7 +263,7 @@ def robotReturnToStation(deviceId: str, content: str = "", expression: str = "")
     task_json = _build_task(content or "好的，准备回桩", expression or "喜悦", TC["Normal"],
                             [{"task_id": "1", "task_type": TT["GoToChargingStation"]}])
     _log_task_json("robotReturnToStation", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotReturnToStation", "下发成功")
+    return _build_response(deviceId, "robotReturnToStation", SUCCUSS_WORD)
 
 @mcp.tool(description="安防巡检")
 def robotSecurityInspection(deviceId: str, content: str = "", expression: str = "") -> dict:
@@ -277,7 +280,7 @@ def robotSecurityInspection(deviceId: str, content: str = "", expression: str = 
     task_json = _build_task(content or "没问题，优先执行全屋巡检", expression or "喜悦", TC["Normal"],
                             [{"task_id": "1", "task_type": TT["SecurityInspection"]}])
     _log_task_json("robotSecurityInspection", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotSecurityInspection", "下发成功")
+    return _build_response(deviceId, "robotSecurityInspection", SUCCUSS_WORD)
 
 @mcp.tool(description="启动行人跟踪")
 def robotTrackPeople(deviceId: str, content: str = "", expression: str = "") -> dict:
@@ -294,7 +297,7 @@ def robotTrackPeople(deviceId: str, content: str = "", expression: str = "") -> 
     task_json = _build_task(content or "好的，进入跟踪模式", expression or "喜悦", TC["Normal"],
                             [{"task_id": "1", "task_type": TT["TrackPerson"]}])
     _log_task_json("robotTrackPeople", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotTrackPeople", "下发成功")
+    return _build_response(deviceId, "robotTrackPeople", SUCCUSS_WORD)
 
 @mcp.tool(description="直线运动（米，正前负后）")
 def robotLinearMotion(deviceId: str, distance: float, content: str = "", expression: str = "") -> dict:
@@ -321,7 +324,7 @@ def robotLinearMotion(deviceId: str, distance: float, content: str = "", express
     task_json = _build_task(content or "好的，开始动作", expression or "喜悦", TC["Normal"],
                             [{"task_id": "1", "task_type": TT["Move"], "distance": f"{dist}"}])
     _log_task_json("robotLinearMotion", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotLinearMotion", "下发成功")
+    return _build_response(deviceId, "robotLinearMotion", SUCCUSS_WORD)
 
 @mcp.tool(description="原地旋转（度，正左负右）")
 def robotRotation(deviceId: str, rotationAngle: float, content: str = "", expression: str = "") -> dict:
@@ -348,14 +351,20 @@ def robotRotation(deviceId: str, rotationAngle: float, content: str = "", expres
     task_json = _build_task(content or "好的，开始动作", expression or "喜悦", TC["Normal"],
                             [{"task_id": "1", "task_type": TT["Rotate"], "rotation_angle": f"{ang}"}])
     _log_task_json("robotRotation", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotRotation", "下发成功")
+    return _build_response(deviceId, "robotRotation", SUCCUSS_WORD)
 
 @mcp.tool(description="直接搜索物体（可指定：区域）")
 def robotSearchObjectDirectly(deviceId: str,
-                      targetObjects: List[str],
-                      areas: Optional[List[str]] = [],
-                      content: str = "",
-                      expression: str = "") -> dict:
+                              targetObjects: Annotated[
+                                   List[str],
+                                   Field(description="物体类别列表，必填参数。必须在合法物体范围内。",
+                                         json_schema_extra={"items": {"type": "string","enum": OBJECTS}})],
+                              areas: Annotated[
+                                 Optional[List[str]], 
+                                 Field(description="目标区域列表，选填参数。必须在合法区域范围内。",
+                                       json_schema_extra={"items": {"type": "string","enum": AREAS}},default=[])] = [],
+                              content: str = "",
+                              expression: str = "") -> dict:
     ok, msg = _require_device(deviceId)
     if not ok:
         task_json = _build_broadcast(msg, "担忧")
@@ -382,7 +391,7 @@ def robotSearchObjectDirectly(deviceId: str,
                             expression or "喜悦", TC["Normal"],
                             [{"task_id": "1", "task_type": TT["SemanticObjSearch"], "areas": area_blocks, "object": obj_blocks}])
     _log_task_json("robotSearchObject", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotSearchObject", "下发成功")
+    return _build_response(deviceId, "robotSearchObject", SUCCUSS_WORD)
 
 @mcp.tool(description="移动到物体附近（可指定：区域）")
 def robotMoveToObject(deviceId: str,
@@ -415,7 +424,7 @@ def robotMoveToObject(deviceId: str,
                               "areas": _areas_to_blocks(area_list) if area_list else [],
                               "object": _objects_to_blocks(objs)}])
     _log_task_json("robotMoveToObject", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotMoveToObject", "下发成功")
+    return _build_response(deviceId, "robotMoveToObject", SUCCUSS_WORD)
 
 @mcp.tool(description="取消任务")
 def robotTaskCancel(deviceId: str, content: str = "", expression: str = "") -> dict:
@@ -430,7 +439,7 @@ def robotTaskCancel(deviceId: str, content: str = "", expression: str = "") -> d
         _log_task_json("robotTaskCancel", deviceId, task_json, "fail", "expression为空")
         return _build_response(deviceId, "robotTaskCancel", "下发失败", "expression为空")
     task_json = _build_task(content or "好的，停止任务", expression or "默认", TC["Clear"], [])
-    return _build_response(deviceId, "robotTaskCancel", "下发成功")
+    return _build_response(deviceId, "robotTaskCancel", SUCCUSS_WORD)
 
 
 @mcp.tool(description="启动寻人功能（可指定：寻找的区域范围、待发布的通知内容、被通知人）")
@@ -457,7 +466,7 @@ def robotSearchPeople(deviceId: str, content: str = "", expression: str = "", ar
     task_json = _build_task(content or "好的，进入寻人模式", expression or "喜悦", TC["Normal"],
                                 [{"task_id": "1", "task_type": TT["PersonSearch"],"areas": _areas_to_blocks(area_list) if area_list else [], "notice_word": notice_word, "notified_party": notified_party}])
     _log_task_json("robotSearchPeople", deviceId, task_json, "success")
-    return _build_response(deviceId, "robotSearchPeople", "下发成功")
+    return _build_response(deviceId, "robotSearchPeople", SUCCUSS_WORD)
 
 
 def _check_object_index(name: str):
@@ -509,7 +518,7 @@ def robotSearchObjectBeneathFurnitures(deviceId: str, targetObject: str, raisedF
                               "big_objects": _bigs_to_blocks(raisedFurnitures) if raisedFurnitures else [],
                               "small_object": {"object_id":"{}".format(_check_object_index(targetObject)), "object_name":targetObject}}])
     _log_task_json("robotMoveToObject", deviceId, task_json, "success")
-    return _build_response(deviceId, _tool_name, "下发成功")
+    return _build_response(deviceId, _tool_name, SUCCUSS_WORD)
 
 
 

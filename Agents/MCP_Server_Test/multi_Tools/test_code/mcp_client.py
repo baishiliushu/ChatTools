@@ -65,41 +65,11 @@ class LocalMCPClient:
             self.http_session = aiohttp.ClientSession()
             await self.exit_stack.enter_async_context(self.http_session)
 
-    async def connect_to_mcp_server(self, server_script_path: str):
-        if not os.path.isfile(server_script_path):
-            raise FileNotFoundError(f"MCP Server 脚本未找到: {server_script_path}")
-
-        print(f"尝试连接到 MCP Server 脚本: {server_script_path}...")
-        command = "python" if server_script_path.endswith('.py') else "node"
-
-        server_params = StdioServerParameters(
-            command=command,
-            args=[server_script_path],
-            env=os.environ.copy()
-        )
-
-        try:
-            stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
-            stdio_reader, stdio_writer = stdio_transport
-            self.mcp_session = ClientSession(stdio_reader, stdio_writer)
-            await self.exit_stack.enter_async_context(self.mcp_session)
-
-            await self.mcp_session.initialize()
-            response = await self.mcp_session.list_tools()
-            self.mcp_tools = response.tools
-            if not self.mcp_tools:
-                print("⚠️ MCP Server 未报告任何可用工具。")
-            else:
-                print("✅ 已连接到 MCP Server，支持以下工具:", [tool.name for tool in self.mcp_tools])
-
-        except Exception as e:
-            print(f"❌ 连接到 MCP Server 失败: {e}")
-            raise
 
     def convert_mcp_tools_to_openai_format(self) -> List[Dict[str, Any]]:
         tools_openai_format = []
         for tool in self.mcp_tools:
-            schema = tool.schema if hasattr(tool, 'schema') and isinstance(tool.schema, dict) else {"type": "object", "properties": {}, "required": []}
+            schema = tool.inputSchema if hasattr(tool, 'inputSchema') and isinstance(tool.inputSchema, dict) else {"type": "object", "properties": {}, "required": []}
             tools_openai_format.append({
                 "type": "function",
                 "function": {
@@ -159,7 +129,7 @@ class LocalMCPClient:
         if not self.http_session:
             await self.initialize_http_session()
         querrys = query.split("c+++")
-        if query.startswith("c+++") or len(self.chat_history) > 15:
+        if query.startswith("c+++") or len(self.chat_history) > 60:
             #self.chat_history = []
             await self.clear_chat_history()
         query = querrys[-1]
@@ -363,7 +333,7 @@ class LocalMCPClient:
         if not self.mcp_tools:
             print("⚠️ MCP Server 未报告任何可用工具。")
         else:
-            print("✅ 已连接到 MCP Server，支持以下工具:", [tool.name for tool in self.mcp_tools])
+            print("✅ 已连接到 MCP Server，支持以下工具:", [tool for tool in self.mcp_tools])
 
 
 async def main():
@@ -375,7 +345,6 @@ async def main():
     client = LocalMCPClient(prompt_txt_path)
     try:
         await client.initialize_http_session()
-        #await client.connect_to_mcp_server(mcp_server_script)
       
         await client.connect_to_mcp()
         await client.chat_loop()
