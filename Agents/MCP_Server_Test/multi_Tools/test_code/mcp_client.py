@@ -16,23 +16,49 @@ from dotenv import load_dotenv
 import logging
 import httpx
 from urllib.parse import urlparse
+import datetime
+import time
 
 # Load .env
 load_dotenv()
+
+# 创建自定义格式化类
+class CustomFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        # 格式化时间为 "月-日 时:分:秒.毫秒"
+        ct = self.converter(record.created)
+        t = time.strftime("%m-%d %H:%M:%S", ct)
+        s = "%s.%03d" % (t, record.msecs)
+        return s
+
+# 配置日志
+def setup_logging():
+    # 创建 logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    
+    # 如果已有处理器存在，先清除
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    # 创建控制台处理器
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    
+    # 创建格式化器并使用自定义时间格式
+    formatter = CustomFormatter('%(levelname)s %(asctime)s (%(message)s')
+    
+    # 将格式化器添加到处理器
+    ch.setFormatter(formatter)
+    
+    # 将处理器添加到 logger
+    logger.addHandler(ch)
+
+# 设置日志
+setup_logging()
+
+# 获取 logger
 logger = logging.getLogger("terminal_client")
-logging.basicConfig(level=logging.DEBUG)
-# 配置日志文件名（按时间生成）
-from datetime import datetime
-log_filename = datetime.now().strftime("../app_%Y%m%d_%H%M%S.log")
-# === 文件处理器（输出到日志文件）===
-file_handler = logging.FileHandler(log_filename, encoding='utf-8')
-file_handler.setLevel(logging.DEBUG)  # 文件记录所有DEBUG及以上级别
-file_formatter = logging.Formatter(
-    '%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-file_handler.setFormatter(file_formatter)
-logger.addHandler(file_handler)
 
 
 class LocalMCPClient:
@@ -79,16 +105,18 @@ class LocalMCPClient:
                 }
             })
         return tools_openai_format
-
-    async def call_vllm_api(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None) -> Optional[Dict[str, Any]]:
+    
+    
+    async def call_vllm_api(self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, stream_enable: bool = False) -> Optional[Dict[str, Any]]:
         if not self.http_session:
             await self.initialize_http_session()
-
+        
         payload = {
             "model": self.model_name,
             "messages": messages,
             #"max_tokens": 90000,
             "temperature": 0.5,
+            "stream": stream_enable  # 启用流式输出
         }
 
         if tools:
@@ -97,34 +125,106 @@ class LocalMCPClient:
                 payload["tools"] = tools
                 payload["tool_choice"] = "auto"
             except TypeError as e:
-                print(f"❌ 工具序列化失败: {e}")
+                logger.info(f"❌ 工具序列化失败: {e}")
 
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.vllm_api_key}"
         }
 
-        print(f"🔄 正在向 vLLM 发送请求 ({self.vllm_api_url})...")
+        logger.info(f"🔄 正在向 vLLM 发送请求 ({self.vllm_api_url})...")
         try:
             time_start_f = time.time()
+            ret = {}
             async with self.http_session.post(self.vllm_api_url, headers=headers, json=payload, timeout=300) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    print(f"🔍 原始 vLLM 响应:\n{json.dumps(result, indent=2, ensure_ascii=False)}\n")
-                    time_end_f = time.time()
-                    print("获取原始vLLM 响应 time cost: {:.2f} s".format(time_end_f - time_start_f))
-                    return result
+                if not stream_enable:
+                    if response.status == 200:
+                        logger.info(f"{type(response)}响应0: {response} ")
+
+                        result = await response.json()
+                        logger.info(f"🔍 原始 vLLM 响应:\n{json.dumps(result, indent=2, ensure_ascii=False)}\n")
+                        time_end_f = time.time()
+                        logger.info("获取原始vLLM 响应 time cost: {:.2f} s".format(time_end_f - time_start_f))
+                        if result.get("choices") or result is not None:
+                            choice = result["choices"][0]
+                            ret["tool_calls"] = choice["message"]["tool_calls"]
+                            ret["content"] = choice["message"]["content"]
+                                                   
+                        return ret
+                    else:
+                        error_text = await response.text()
+                        logger.info(f"❌ vLLM API 请求失败。状态码: {response.status}")
+                        logger.info(f"响应内容: {error_text[:1000]}...")
+                        return None
                 else:
-                    error_text = await response.text()
-                    print(f"❌ vLLM API 请求失败。状态码: {response.status}")
-                    print(f"响应内容: {error_text[:1000]}...")
-                    return None
+                    logger.info(f"{type(response)}响应1: {response} ")
+                    # TODO: 流式数据的并发拼接
+                    
+                    # TODO: 解析到完整tool后判断
+                    
+                        # TODO: tool 不为空，放到ret中返回；tool为空，等待content拼接完后，放到ret中返回 
+                    
+                    
+                    return ret
 
         except Exception as e:
-            print(f"❌ 调用 vLLM API 时发生意外错误: {e}")
+            logger.info(f"❌ 调用 vLLM API 时发生意外错误: {e}")
             return None
 
-    async def process_query(self, query: str) -> Optional[str]:
+    async def process_response(self, llm_response_data: Dict[str, Any], system_message: Dict[str, Any], query: str, stream_enable: bool = True) -> Optional[str]:
+        """处理API响应（流式和非流式通用）"""
+        if not llm_response_data or llm_response_data is None:
+            return "抱歉，我在思考时遇到了一些麻烦。"
+
+        content = llm_response_data.get("content")
+        tool_calls = llm_response_data.get("tool_calls")
+        
+        if tool_calls:
+            tool_name_contents = []
+            tool_name_description = ""
+            tool_content_description = ""
+            
+            for tool_call in tool_calls:
+                tool_name = tool_call['function']['name']
+                try:
+                    tool_args = json.loads(tool_call['function']['arguments'])
+                except json.JSONDecodeError:
+                    logger.info(f"❌ 工具参数解析失败: {tool_call['function']['arguments']}")
+                    continue
+                
+                logger.info(f"🛠️ 真实 ToolCall: {tool_name}, 参数: {tool_args}")
+                mcp_result = await self.mcp_session.call_tool(tool_name, tool_args)
+                tool_content = mcp_result.content[0].text if mcp_result.content else "工具未返回任何内容。"
+                tool_name_contents.append({"tool_name": tool_name, "tool_content": tool_content})
+            
+            for tc in tool_name_contents:
+                tool_name_description += " " + tc["tool_name"] + "  "
+                tool_content_description += " " + tc["tool_content"] + "  "
+            
+            twice_input = f"工具{tool_name_description}的请求结果:{tool_content_description}"
+            logger.info(f"🛠️ [-*-二次推理输入-*-] {twice_input}")
+            tool_result_msg = {
+                "role": "user",
+                "content": twice_input
+            }
+            llm_response_data["reasoning_content"] = None
+            llm_response_data["role"] = "assistant"
+            self.chat_history.extend([{"role": "user", "content": query}, llm_response_data, tool_result_msg])
+            
+            # 二次推理也使用相同的非流式模式设置                
+            final_response = await self.call_vllm_api([system_message] + self.chat_history, stream_enable=False)
+            if final_response and final_response.get("content"):
+                final_content = final_response.get("content")
+                self.chat_history.append({"role": "assistant", "content": final_content})
+                logger.info(f"\n🤖 Assistant: {final_content}")
+                return final_content
+            else:
+                return "抱歉，处理工具结果时出错。"
+        else:
+            self.chat_history.extend([{"role": "user", "content": query}, llm_response_data])
+            return content
+
+    async def process_query(self, query: str, stream_enable: bool = False) -> Optional[str]:
         
         if not self.http_session:
             await self.initialize_http_session()
@@ -135,61 +235,21 @@ class LocalMCPClient:
         query = querrys[-1]
         if len(query) < 1:
             return "EMPTY user words."
-        print(f"发送请求到模型: {query}")
+        logger.info(f"发送请求到模型: {query}")
         system_message = {"role": "system", "content": self.file_content}
         messages = [system_message] + self.chat_history + [{"role": "user", "content": query}]
         tools_for_llm = self.convert_mcp_tools_to_openai_format()
         #print("openai mesages:\n{}".format(tools_for_llm))
-        llm_response_data = await self.call_vllm_api(messages, tools=tools_for_llm)
 
-        if not llm_response_data:
-            return "抱歉，我在思考时遇到了一些麻烦。"
-        if llm_response_data.get("choices"):
-                                                                                            
-            choice = llm_response_data["choices"][0]
-            message = choice["message"]
-            #delta = choice.get('content', {})
-            content = message.get("content")
-            tool_calls = message.get("tool_calls")
-            if tool_calls:
-                toll_index = 0
-                tool_name_contents = list()
-                tool_name_description = ""
-                tool_content_description = ""
-                
-                for toll_index in range(0, len(tool_calls)):
-                    tool_call = tool_calls[toll_index]
-                    tool_name = tool_call['function']['name']
-                    tool_args = json.loads(tool_call['function']['arguments'])
+        # 根据流式模式选择调用方式
+        if stream_enable:
+            logger.info("使用流式模式")
+            #llm_response_data = await self.call_vllm_api_streaming(messages, tools=tools_for_llm)
+        else:
+            logger.info("使用非流式模式")
+        llm_response_data = await self.call_vllm_api(messages, tools=tools_for_llm, stream_enable=stream_enable)
+        return  await self.process_response(llm_response_data, system_message, query, stream_enable)      
 
-                    print(f"🛠️ 真实 ToolCall: {tool_name}, 参数: {tool_args}")
-                    mcp_result = await self.mcp_session.call_tool(tool_name, tool_args)
-                    tool_content = mcp_result.content[0].text if mcp_result.content else "工具未返回任何内容。"
-                    tool_name_contents.append({"tool_name":tool_name, "tool_content":tool_content})
-                
-                for tc in tool_name_contents:
-                    tool_name_description = tool_name_description + ";" + tc["tool_name"]
-                    tool_content_description = tool_content_description + ";" + tc["tool_content"]
-
-                tool_result_msg = {
-                        "role": "user",
-                        "content": f"工具 '{tool_name_description}' 执行完毕，返回：\n{tool_content_description}\n请回答用户的问题：'{query}'"
-                    }    
-                self.chat_history.extend([{"role": "user", "content": query}, message, tool_result_msg])
-
-                final_response = await self.call_vllm_api([system_message] + self.chat_history)
-                if final_response and final_response.get("choices"):
-                    final_content = final_response["choices"][0]["message"].get("content")
-                    self.chat_history.append({"role": "assistant", "content": final_content})
-                    return final_content    
-                else:
-                    return "抱歉，处理工具结果时出错。" # 设备 b0:ac:82:47:d0:1d ,左转2度再转回来
-
-            else:
-                llm_content = message.get("content", "").strip()
-                self.chat_history.extend([{"role": "user", "content": query}, message])
-                return llm_content       
-                                                           
     async def clear_chat_history(self):
         l = len(self.chat_history)
         self.chat_history = []
@@ -197,7 +257,8 @@ class LocalMCPClient:
         return len(self.chat_history)
         
     async def chat_loop(self):
-        print("\n🤖 本地 LLM + MCP 客户端已启动！输入 'quit' 退出")
+        logger.info("\n🤖 本地 LLM + MCP 客户端已启动！输入 'quit' 退出")
+        _stream_enable = False
         while True:
             try:
                 query = input("\n你: ").strip()
@@ -207,16 +268,26 @@ class LocalMCPClient:
                     break
                 if query.lower() == 'ttt':
                     await self.run_batch_test()
+                if query.lower() == 'stream on':
+                    _stream_enable = True
+                    logger.info("已启用流式模式")
+                    continue
+                if query.lower() == 'stream off':
+                    _stream_enable = False
+                    logger.info("已禁用流式模式")
+                    continue
                 if  query.lower() == 'c':
                     await self.clear_chat_history()
                 else:
-                    response_text = await self.process_query(query)
-                    print(f"\n🤖 Assistant: {response_text}")
+                    if _stream_enable:
+                        print("🤖 Assistant: ", end="", flush=True)
+                    response_text = await self.process_query(query, _stream_enable)
+                    
             except KeyboardInterrupt:
-                print("\n检测到中断，正在退出...")
+                logger.info("\n检测到中断，正在退出...")
                 break
             except Exception as e:
-                print(f"⚠️ 处理查询时发生错误: {str(e)}")
+                logger.info(f"⚠️ 处理查询时发生错误: {str(e)}")          
 
 
     async def run_batch_test(self):
@@ -227,7 +298,7 @@ class LocalMCPClient:
 
         for i, query in enumerate(self.test_queries):
             messages = [system_message, {"role": "user", "content": query}]
-            print(f"\n🧪 测试 {i+1}/{len(self.test_queries)}: {query}")
+            logger.info(f"\n🧪 测试 {i+1}/{len(self.test_queries)}: {query}")
 
             start = time.time()
             result = await self.call_vllm_api(messages, tools=tools_for_llm)
@@ -235,21 +306,21 @@ class LocalMCPClient:
 
             duration = end - start
             stats.append((query, duration))
-            print(f"🕒 响应耗时: {duration:.2f} 秒\n")
+            logger.info(f"🕒 响应耗时: {duration:.2f} 秒\n")
 
-        print("\n📊 批量测试完成！\n")
+        logger.info("\n📊 批量测试完成！\n")
         for query, duration in stats:
-            print(f"【{query}】耗时: {duration:.2f} 秒")
+            logger.info(f"【{query}】耗时: {duration:.2f} 秒")
 
         all_times = [d for _, d in stats]
-        print(f"\n📈 平均耗时: {sum(all_times)/len(all_times):.2f} 秒")
-        print(f"⏱️ 最快: {min(all_times):.2f} 秒，最慢: {max(all_times):.2f} 秒")
+        logger.info(f"\n📈 平均耗时: {sum(all_times)/len(all_times):.2f} 秒")
+        logger.info(f"⏱️ 最快: {min(all_times):.2f} 秒，最慢: {max(all_times):.2f} 秒")
 
 
     async def cleanup(self):
-        print("正在关闭连接...")
+        logger.info("正在关闭连接...")
         await self.exit_stack.aclose()
-        print("连接已关闭。")
+        logger.info("连接已关闭。")
 
     
     async def _connect_stdio(self, server_script_path: str):
@@ -270,7 +341,7 @@ class LocalMCPClient:
             self.mcp_session = ClientSession(stdio_reader, stdio_writer)
             await self._initialize_session()
         except Exception as e:
-            print(f"❌ 使用 stdio 模式连接到 MCP Server 失败: {e}")
+            logger.info(f"❌ 使用 stdio 模式连接到 MCP Server 失败: {e}")
             raise
 
     async def _connect_sse(self, sse_url: str):
@@ -284,7 +355,7 @@ class LocalMCPClient:
             self.mcp_session = ClientSession(sse_reader, sse_writer)
             await self._initialize_session()
         except Exception as e:
-            print(f"❌ 使用 SSE 模式连接到 MCP Server 失败: {e} BY {sse_url}")
+            logger.info(f"❌ 使用 SSE 模式连接到 MCP Server 失败: {e} BY {sse_url}")
             raise
 
     async def _connect_shttp(self, shttp_url: str):
@@ -307,12 +378,12 @@ class LocalMCPClient:
             self.mcp_session = ClientSession(shttp_reader, shttp_writer)
             await self._initialize_session()
         except Exception as e:
-            print(f"❌ 使用 sHTTP 模式连接到 MCP Server 失败: {e}")
+            logger.info(f"❌ 使用 sHTTP 模式连接到 MCP Server 失败: {e}")
             raise
 
     async def connect_to_mcp(self):
         """连接到MCP服务器，支持三种模式"""
-        print(f"尝试使用 {self.mcp_mode.upper()} 模式连接到 MCP 服务器...")
+        logger.info(f"尝试使用 {self.mcp_mode.upper()} 模式连接到 MCP 服务器...")
         mcp_mode_by_url = self.mcp_mode
         if ".py" in  mcp_mode_by_url:
             await self._connect_stdio(mcp_mode_by_url)
@@ -331,14 +402,14 @@ class LocalMCPClient:
         self.mcp_tools = response.tools
         
         if not self.mcp_tools:
-            print("⚠️ MCP Server 未报告任何可用工具。")
+            logger.info("⚠️ MCP Server 未报告任何可用工具。")
         else:
-            print("✅ 已连接到 MCP Server，支持以下工具:", [tool for tool in self.mcp_tools])
+            logger.info("✅ 已连接到 MCP Server，支持以下工具:", [tool for tool in self.mcp_tools])
 
 
 async def main():
     if len(sys.argv) < 2:
-        print("Usage: python client.py <path_to_prompt>")
+        logger.info("Usage: python client.py <path_to_prompt>")
         sys.exit(1)
 
     prompt_txt_path = sys.argv[1]
