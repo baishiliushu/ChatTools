@@ -88,8 +88,28 @@ class LocalMCPClient:
 
     async def initialize_http_session(self):
         if not self.http_session:
-            self.http_session = aiohttp.ClientSession()
-            await self.exit_stack.enter_async_context(self.http_session)
+            # 配置连接池和超时参数
+            connector = aiohttp.TCPConnector(
+                limit=20,  # 最大连接数
+                limit_per_host=5,  # 每主机最大连接数
+                ttl_dns_cache=300  # DNS缓存时间
+            )
+            timeout = aiohttp.ClientTimeout(total=300)  # 总超时
+            
+            # 创建带配置的会话
+            self.http_session = aiohttp.ClientSession(
+                connector=connector,
+                timeout=timeout
+            )
+            
+            try:
+                # 注册到退出栈
+                await self.exit_stack.enter_async_context(self.http_session)
+            except Exception as e:
+                # 如果注册失败，确保关闭会话
+                await self.http_session.close()
+                self.http_session = None
+                raise e
 
 
     def convert_mcp_tools_to_openai_format(self) -> List[Dict[str, Any]]:
@@ -115,7 +135,7 @@ class LocalMCPClient:
             "model": self.model_name,
             "messages": messages,
             #"max_tokens": 90000,
-            "temperature": 0.5,
+            #"temperature": 0.5,
             "stream": stream_enable  # 启用流式输出
         }
 
@@ -132,11 +152,11 @@ class LocalMCPClient:
             "Authorization": f"Bearer {self.vllm_api_key}"
         }
 
-        logger.info(f"🔄 正在向 vLLM 发送请求 ({self.vllm_api_url})...")
+        logger.info(f"🔄 正在向 vLLM 发送请求 ({self.vllm_api_url})...{payload.keys()} \n{messages[0].keys()}")
         try:
             time_start_f = time.time()
             ret = {}
-            async with self.http_session.post(self.vllm_api_url, headers=headers, json=payload, timeout=300) as response:
+            async with self.http_session.post(self.vllm_api_url, headers=headers, json=payload, timeout=500) as response:
                 if not stream_enable:
                     if response.status == 200:
                         logger.info(f"{type(response)}响应0: {response} ")
@@ -158,14 +178,114 @@ class LocalMCPClient:
                         return None
                 else:
                     logger.info(f"{type(response)}响应1: {response} ")
-                    # TODO: 流式数据的并发拼接
+                    
+                    # 初始化变量用于累积流式数据
+                    current_tool_calls = {}
+                    ret_content = ""
+                    
+                    async for line in response.content:
+                        if line:
+                            decoded_line = line.decode('utf-8').strip()
+                            logger.info(f"Received data: {decoded_line}")
+                            
+                            if decoded_line.startswith('data: '):
+                                # 处理SSE格式数据
+                                json_str = decoded_line[6:]  # 移除"data: "前缀
+                                if json_str == "[DONE]":
+                                    break
+                                try:
+                                    data = json.loads(json_str)
+                                    if "choices" in data and len(data["choices"]) > 0:
+                                        delta = data["choices"][0].get("delta", {})
+                                        
+                                        # 处理内容更新
+                                        if "content" in delta and delta["content"]:
+                                            ret_content += delta["content"]
+                                        
+                                        # 处理工具调用更新
+                                        if "tool_calls" in delta and delta["tool_calls"]:
+                                            for tool_call_chunk in delta["tool_calls"]:
+                                                index = tool_call_chunk.get("index", 0)
+                                                
+                                                # 初始化当前索引的工具调用
+                                                if index not in current_tool_calls:
+                                                    current_tool_calls[index] = {
+                                                        "id": "",
+                                                        "type": "function",
+                                                        "function": {
+                                                            "name": "",
+                                                            "arguments": ""
+                                                        }
+                                                    }
+                                                
+                                                # 更新工具调用信息
+                                                current_tool_call = current_tool_calls[index]
+                                                
+                                                if "id" in tool_call_chunk:
+                                                    current_tool_call["id"] = tool_call_chunk["id"]
+                                                
+                                                if "type" in tool_call_chunk:
+                                                    current_tool_call["type"] = tool_call_chunk["type"]
+                                                
+                                                if "function" in tool_call_chunk:
+                                                    function_chunk = tool_call_chunk["function"]
+                                                    
+                                                    if "name" in function_chunk:
+                                                        current_tool_call["function"]["name"] = function_chunk["name"]
+                                                    
+                                                    if "arguments" in function_chunk:
+                                                        current_tool_call["function"]["arguments"] += function_chunk["arguments"]
+                                    
+                                    # 检查是否完成
+                                    finish_reason = data["choices"][0].get("finish_reason")
+                                    if finish_reason == "tool_calls":
+                                        # 所有工具调用已完成，尝试解析参数
+                                        ret_tool_calls = []
+                                        for index in sorted(current_tool_calls.keys()):
+                                            tool_call = current_tool_calls[index]
+                                            try:
+                                                # 尝试解析参数为JSON
+                                                if tool_call["function"]["arguments"]:
+                                                    tool_call["function"]["arguments"] = tool_call["function"]["arguments"]
+                                                ret_tool_calls.append(tool_call)
+                                            except json.JSONDecodeError:
+                                                # 如果解析失败，保持原始字符串格式
+                                                logger.warning(f"无法解析工具调用参数为JSON: {tool_call['function']['arguments']}")
+                                                ret_tool_calls.append(tool_call)
+                                        
+                                        ret["tool_calls"] = ret_tool_calls
+                                        ret["content"] = ret_content
+                                        time_end_f = time.time()
+                                        logger.info("获取原始vLLM 响应 time cost: {:.2f} s".format(time_end_f - time_start_f))
+                                        return ret
+                                        
+                                except json.JSONDecodeError:
+                                    logger.info(f"无法解析JSON: {json_str}")
+                    
+                    # 如果流结束但没有明确的工具调用完成信号，也尝试处理已收集的数据
+                    ret_tool_calls = []
+                    for index in sorted(current_tool_calls.keys()):
+                        tool_call = current_tool_calls[index]
+                        try:
+                            if tool_call["function"]["arguments"]:
+                                tool_call["function"]["arguments"] = tool_call["function"]["arguments"]
+                            ret_tool_calls.append(tool_call)
+                        except json.JSONDecodeError:
+                            logger.warning(f"无法解析工具调用参数为JSON: {tool_call['function']['arguments']}")
+                            ret_tool_calls.append(tool_call)
+                    
+                    ret["tool_calls"] = ret_tool_calls
+                    ret["content"] = ret_content
+                    time_end_f = time.time()
+                    logger.info("获取原始vLLM 响应 time cost: {:.2f} s".format(time_end_f - time_start_f))
+                    return ret
+                    
+
                     
                     # TODO: 解析到完整tool后判断
                     
-                        # TODO: tool 不为空，放到ret中返回；tool为空，等待content拼接完后，放到ret中返回 
+                        # TODO: tool 不为空，放到ret中返回；tool为空，等待content拼接完后，放到ret中返回
                     
-                    
-                    return ret
 
         except Exception as e:
             logger.info(f"❌ 调用 vLLM API 时发生意外错误: {e}")
@@ -179,6 +299,10 @@ class LocalMCPClient:
         content = llm_response_data.get("content")
         tool_calls = llm_response_data.get("tool_calls")
         
+        llm_response_data["reasoning_content"] = None
+        llm_response_data["role"] = "assistant"
+        logger.info(f"响应后处理 -> 处理请求 {llm_response_data}")
+
         if tool_calls:
             tool_name_contents = []
             tool_name_description = ""
@@ -202,24 +326,28 @@ class LocalMCPClient:
                 tool_content_description += " " + tc["tool_content"] + "  "
             
             twice_input = f"工具{tool_name_description}的请求结果:{tool_content_description}"
+            if tool_content_description == "":
+                ass = "请求工具结果出错。"
+                self.chat_history.extend([{"role": "user", "content": query},{"role": "assistant", "content": ass}])
+                return ass
+
             logger.info(f"🛠️ [-*-二次推理输入-*-] {twice_input}")
             tool_result_msg = {
                 "role": "user",
                 "content": twice_input
             }
-            llm_response_data["reasoning_content"] = None
-            llm_response_data["role"] = "assistant"
+
             self.chat_history.extend([{"role": "user", "content": query}, llm_response_data, tool_result_msg])
             
             # 二次推理也使用相同的非流式模式设置                
             final_response = await self.call_vllm_api([system_message] + self.chat_history, stream_enable=False)
             if final_response and final_response.get("content"):
                 final_content = final_response.get("content")
-                self.chat_history.append({"role": "assistant", "content": final_content})
-                logger.info(f"\n🤖 Assistant: {final_content}")
-                return final_content
             else:
-                return "抱歉，处理工具结果时出错。"
+                final_response = "抱歉，处理工具结果时出错。"
+            self.chat_history.append({"role": "assistant", "content": final_content})
+            logger.info(f"\n🤖 Assistant: {final_content}")
+            return final_content
         else:
             self.chat_history.extend([{"role": "user", "content": query}, llm_response_data])
             return content

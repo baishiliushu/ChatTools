@@ -17,13 +17,13 @@ export MCP_MODE_BY_URL=mcp_server.py
 python mcp_client.py prompt_tools.txt
 ---
 export MCP_MODE_BY_URL=http://192.168.50.22:8087/sse
-python mcp_server.py 2>&1 | tee -a "../"%y_%m_%d-%H_%M_%S"-server.log"
+python mcp_server.py 2>&1 | tee -a "../../../Logs/$(date +"%y_%m_%d-%H_%M_%S")-server.log"
 
 python mcp_client.py prompt_tools.txt
 ---
 export MCP_MODE_BY_URL=http://192.168.50.22:8088/shttp
 python mcp_server.py
-python mcp_client.py prompt_tools.txt 2>&1 | tee -a "../"%y_%m_%d-%H_%M_%S"-client.log"
+python mcp_client.py prompt_tools.txt 2>&1 | tee -a "../../../Logs/$(date +"%y_%m_%d-%H_%M_%S")-client.log"
 `
 
 ### 输入示例
