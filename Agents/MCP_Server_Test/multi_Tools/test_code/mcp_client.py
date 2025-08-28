@@ -256,7 +256,7 @@ class LocalMCPClient:
                                         ret["tool_calls"] = ret_tool_calls
                                         ret["content"] = ret_content
                                         time_end_f = time.time()
-                                        logger.info("获取原始vLLM 响应 time cost: {:.2f} s".format(time_end_f - time_start_f))
+                                        logger.info("获取原始vLLM 响应 tool time cost: {:.2f} s".format(time_end_f - time_start_f))
                                         return ret
                                         
                                 except json.JSONDecodeError:
@@ -318,6 +318,7 @@ class LocalMCPClient:
                 
                 logger.info(f"🛠️ 真实 ToolCall: {tool_name}, 参数: {tool_args}")
                 mcp_result = await self.mcp_session.call_tool(tool_name, tool_args)
+                logger.info(f" Tool Result: {tool_name} -> {type(mcp_result)} =>  {mcp_result} ")
                 tool_content = mcp_result.content[0].text if mcp_result.content else "工具未返回任何内容。"
                 tool_name_contents.append({"tool_name": tool_name, "tool_content": tool_content})
             
