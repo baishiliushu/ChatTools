@@ -3,7 +3,7 @@ import json
 import time
 
 #PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/test-prompt/0423/0423-1.txt" #0414-chat.txt"
-PROMPT_PATH = "/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
+PROMPT_PATH = "/home/leon/work_c_p_p/githubs/ChatTools/Agents/MCP_Server_Test/multi_Tools/test_code/prompt_tools.txt" #"/home/leon/Documents/docs/TCL-2qi/deepseek-research/AIOT/repo/llm/prompt.txt" # task0416 task0418-lxy-only-example
 INPUT_PATH = "./input1.txt" 
 # 配置
 #URL = "http://192.168.50.208:8000/v1/chat/completions" # v1/chat/completions
@@ -26,7 +26,7 @@ def load_cleaner_prompt(path=PROMPT_PATH):
 
 INPUT_CONTENT = "去卧室找爸爸"
 INPUT_CONTENT = load_cleaner_prompt(INPUT_PATH)
-INPUT_CONTENT = "100的99次方和99的100次方，哪个大？" #"哪咤2票房"
+INPUT_CONTENT = "<b0:ac:82:47:do:1q>用户输入：前进0.223米" #"100的99次方和99的100次方，哪个大？" #"哪咤2票房"
 
 """
 HEADERS = {
@@ -43,8 +43,8 @@ HEADERS = {
 
 # 构建请求体
 
-OUT_TYPE = "json_object" 
-#OUT_TYPE = "text" 
+#OUT_TYPE = "json_object" 
+OUT_TYPE = "text" 
 
 # 输入token长度
 DATA = {
@@ -104,7 +104,7 @@ def process_stream_response(response):
         
         if line:
             decoded_line = line.decode('utf-8')
-            #print(f"Received data: {decoded_line}")
+            print(f"Received data: {decoded_line}")
             if decoded_line.startswith('data:'):
                 json_data = decoded_line[len('data:'):].strip()
                 if json_data == '[DONE]':
