@@ -13,7 +13,8 @@
       --data last_user.jsonl \
       --out-json results.jsonl \
       --out-csv results.csv \
-      --max 0
+      --max 0 \
+      --history_length 6
 
 说明：
   prompt.txt           -> 你的系统提示词文件（和你平时启动 mcp_client 一样）
@@ -64,26 +65,40 @@ def load_dataset(path: str, limit: int = 0) -> List[str]:
     return items
 
 async def eval_once(client: LocalMCPClient, query: str) -> Dict[str, Any]:
-    # 每条样本独立评测：清空历史
     await client.clear_chat_history()
     t0 = time.time()
     try:
-        # 走你现有的完整流程：系统提示词 + 工具 + 二次推理
-        resp_text = await client.process_query(query, stream_enable=False)
+        resp = await client.process_query(query, stream_enable=False)  # 现在返回 dict
         ok = True
         err = ""
     except Exception as e:
-        resp_text = ""
+        resp = None
         ok = False
         err = str(e)
     t1 = time.time()
+
+    # 兜底
+    answer = ""
+    first_tool_calls = []
+    first_latency_s = None
+    second_latency_s = None
+    if isinstance(resp, dict):
+        answer = resp.get("answer") or ""
+        first_tool_calls = resp.get("first_tool_calls") or []
+        first_latency_s = resp.get("first_latency_s")
+        second_latency_s = resp.get("second_latency_s")
+
     return {
         "query": query,
-        "answer": resp_text if resp_text is not None else "",
-        "latency_s": round(t1 - t0, 3),
+        "answer": answer,
+        "latency_s": round(t1 - t0, 3),          # 整体耗时（包含二次推理）
+        "first_latency_s": first_latency_s,      # 首次模型调用耗时
+        "second_latency_s": second_latency_s,    # 二次推理耗时（若无工具则为 0 或 None）
+        "first_tool_calls": first_tool_calls,    # 中间 tool_calls 的完整参数
         "ok": ok,
         "error": err,
     }
+
 
 async def main():
     ap = argparse.ArgumentParser()
@@ -92,6 +107,7 @@ async def main():
     ap.add_argument("--out-json", default="results.jsonl", help="输出 JSONL（默认 results.jsonl）")
     ap.add_argument("--out-csv", default="results.csv", help="输出 CSV（默认 results.csv）")
     ap.add_argument("--max", type=int, default=0, help="最多评测多少条（0 表示全部）")
+    ap.add_argument("--history_length", type=int, default=6, help="单次会话的长度限制")
     args = ap.parse_args()
 
     # 载入数据
@@ -101,7 +117,7 @@ async def main():
         sys.exit(2)
 
     # 初始化 client（沿用你现有的环境变量与连接模式）
-    client = LocalMCPClient(args.prompt_path)
+    client = LocalMCPClient(args.prompt_path, args.history_length)
     try:
         await client.initialize_http_session()
         await client.connect_to_mcp()
@@ -128,9 +144,29 @@ async def main():
     # 写 CSV
     with open(args.out_csv, "w", encoding="utf-8", newline="") as wc:
         writer = csv.writer(wc)
-        writer.writerow(["idx", "query", "answer", "latency_s", "ok", "error"])
+        writer.writerow([
+            "idx",
+            "query",
+            "answer",
+            "latency_s",
+            "first_latency_s",
+            "second_latency_s",
+            "first_tool_calls",  # 序列化为字符串写入
+            "ok",
+            "error"
+        ])
         for i, r in enumerate(results):
-            writer.writerow([i, r["query"], r["answer"], r["latency_s"], r["ok"], r["error"]])
+            writer.writerow([
+                i,
+                r.get("query", ""),
+                r.get("answer", ""),
+                r.get("latency_s", ""),
+                r.get("first_latency_s", ""),
+                r.get("second_latency_s", ""),
+                json.dumps(r.get("first_tool_calls", []), ensure_ascii=False),
+                r.get("ok", ""),
+                r.get("error", "")
+            ])
 
     print(f"\n✅ 完成！JSONL -> {args.out_json} ，CSV -> {args.out_csv}")
 

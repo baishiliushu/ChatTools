@@ -172,6 +172,9 @@ class LocalMCPClient:
                             choice = result["choices"][0]
                             ret["tool_calls"] = choice["message"]["tool_calls"]
                             ret["content"] = choice["message"]["content"]
+
+                        ret["first_latency_s"] = round(time_end_f - time_start_f, 3)
+
                         log_key_word = " "
                         if ret["tool_calls"]:
                             log_key_word = "tool "
@@ -297,23 +300,23 @@ class LocalMCPClient:
             logger.info(f"❌ 调用 vLLM API 时发生意外错误: {e}")
             return None
 
-    async def process_response(self, llm_response_data: Dict[str, Any], system_message: Dict[str, Any], query: str, stream_enable: bool = True) -> Optional[str]:
-        """处理API响应（流式和非流式通用）"""
-        if not llm_response_data or llm_response_data is None:
-            return "抱歉，我在思考时遇到了一些麻烦。"
+    async def process_response(self, llm_response_data: Dict[str, Any], system_message: Dict[str, Any], query: str,
+                               stream_enable: bool = True) -> Optional[Dict[str, Any]]:
+        if not llm_response_data:
+            return {"answer": "抱歉，我在思考时遇到了一些麻烦。", "first_tool_calls": [], "first_latency_s": None,
+                    "second_latency_s": None}
 
         content = llm_response_data.get("content")
-        tool_calls = llm_response_data.get("tool_calls")
-        
+        tool_calls = llm_response_data.get("tool_calls") or []
+        first_latency = llm_response_data.get("first_latency_s")
+
         llm_response_data["reasoning_content"] = None
         llm_response_data["role"] = "assistant"
         logger.info(f"响应后处理 -> 处理请求 {llm_response_data}")
 
+        # 情况1：有工具调用 -> 真实调用 + 二次推理
         if tool_calls:
             tool_name_contents = []
-            tool_name_description = ""
-            tool_content_description = ""
-            
             for tool_call in tool_calls:
                 tool_name = tool_call['function']['name']
                 try:
@@ -321,43 +324,57 @@ class LocalMCPClient:
                 except json.JSONDecodeError:
                     logger.info(f"❌ 工具参数解析失败: {tool_call['function']['arguments']}")
                     continue
-                
                 logger.info(f"🛠️ 真实 ToolCall: {tool_name}, 参数: {tool_args}")
                 mcp_result = await self.mcp_session.call_tool(tool_name, tool_args)
                 logger.info(f" Tool Result: {tool_name} -> {type(mcp_result)} =>  {mcp_result} ")
                 tool_content = mcp_result.content[0].text if mcp_result.content else "工具未返回任何内容。"
                 tool_name_contents.append({"tool_name": tool_name, "tool_content": tool_content})
-            
-            for tc in tool_name_contents:
-                tool_name_description += " " + tc["tool_name"] + "  "
-                tool_content_description += " " + tc["tool_content"] + "  "
-            
-            twice_input = f"工具{tool_name_description}的请求结果:{tool_content_description}"
-            if tool_content_description == "":
+
+            tool_name_description = " ".join(tc["tool_name"] for tc in tool_name_contents)
+            tool_content_description = " ".join(tc["tool_content"] for tc in tool_name_contents)
+            twice_input = f"工具 {tool_name_description} 的请求结果:{tool_content_description}"
+
+            if not tool_content_description:
                 ass = "请求工具结果出错。"
-                self.chat_history.extend([{"role": "user", "content": query},{"role": "assistant", "content": ass}])
-                return ass
+                self.chat_history.extend([{"role": "user", "content": query}, {"role": "assistant", "content": ass}])
+                return {"answer": ass, "first_tool_calls": tool_calls, "first_latency_s": first_latency,
+                        "second_latency_s": None}
 
             logger.info(f"🛠️ [-*-二次推理输入-*-] {twice_input}")
-            tool_result_msg = {
-                "role": "user",
-                "content": twice_input
-            }
+            tool_result_msg = {"role": "user", "content": twice_input}
 
+            # 聊天历史推进
             self.chat_history.extend([{"role": "user", "content": query}, llm_response_data, tool_result_msg])
-            
-            # 二次推理也使用相同的非流式模式设置                
+
+            # ✅ 记录二次推理耗时
+            t2_start = time.time()
             final_response = await self.call_vllm_api([system_message] + self.chat_history, stream_enable=False)
+            t2_end = time.time()
+            second_latency = round(t2_end - t2_start, 3)
+
             if final_response and final_response.get("content"):
                 final_content = final_response.get("content")
             else:
-                final_response = "抱歉，处理工具结果时出错。"
+                final_content = "抱歉，处理工具结果时出错。"
+
             self.chat_history.append({"role": "assistant", "content": final_content})
             logger.info(f"\n🤖 Assistant: {final_content}")
-            return final_content
-        else:
-            self.chat_history.extend([{"role": "user", "content": query}, llm_response_data])
-            return content
+
+            return {
+                "answer": final_content,
+                "first_tool_calls": tool_calls,
+                "first_latency_s": first_latency,
+                "second_latency_s": second_latency
+            }
+
+        # 情况2：无工具，直接返回
+        self.chat_history.extend([{"role": "user", "content": query}, llm_response_data])
+        return {
+            "answer": content,
+            "first_tool_calls": [],
+            "first_latency_s": first_latency,
+            "second_latency_s": 0.0
+        }
 
     async def process_query(self, query: str, stream_enable: bool = False) -> Optional[str]:
         

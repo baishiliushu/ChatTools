@@ -1198,7 +1198,9 @@ robotSearchObjectDirectly robotMoveToObject robotSearchObjectBeneathFurnitures
 robotSearchPeople 
 
 "真实 ToolCall" -B 3 | grep "time cost"    0.85 1.1 
-<b0:ac:82:47:do:1h>用户输入：取消任务
+
+取消任务。
+建个图。  安防巡检。 回桩。 跟着我。 走一米。 往前走一点。  猫在哪。 到客厅的沙发旁。 看看沙发底下有没有狗。 狗在不在沙发底下。 
  
 <b0:ac:82:47:do:1h>用户输入：建个图 
 <b0:ac:82:47:do:1h>设备上报：{"reMsg_type":"任务状态信息","tasks":[{"to_say":"","task_type":"robotCreateMap","task_state":"成功","task_subState":"默认"}]}
@@ -1231,15 +1233,16 @@ robotSearchPeople
 <b0:ac:82:47:do:1h>用户输入：到客厅的沙发旁
 <b0:ac:82:47:do:1h>设备上报：{"reMsg_type":"任务状态信息","tasks":[{"to_say":"","task_type":"robotMoveToObject","task_state":"成功","task_subState":"默认"}]}
 
-<b0:ac:82:47:do:1h>用户输入：看看沙发底下有没有狗 钥匙
+<b0:ac:82:47:do:1h>用户输入：看看沙发底下有没有狗 
 <b0:ac:82:47:do:1h>设备上报：{"reMsg_type":"任务状态信息","tasks":[{"to_say":"","task_type":"robotSearchObjectBeneathFurnitures","task_state":"默认","task_subState":"成功"}]}
 <b0:ac:82:47:do:1h>设备上报：{"reMsg_type":"任务状态信息","tasks":[{"to_say":"","task_type":"robotSearchObjectBeneathFurnitures","task_state":"成功","task_subState":"默认"}]}
 <b0:ac:82:47:do:1h>设备上报：{"reMsg_type":"任务状态信息","tasks":[{"to_say":"","task_type":"robotSearchObjectBeneathFurnitures","task_state":"失败","task_subState":"默认"}]}
 
 <b0:ac:82:47:do:1h>用户输入：狗在不在沙发底下
+<b0:ac:82:47:do:1h>用户输入：取消任务
 
 -*-start.-*-
--下发
+-下发 钥匙
 <b0:ac:82:47:do:1h>用户输入：喊大家来吃饭
 -
 --MCP下发SDK-JSON

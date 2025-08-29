@@ -68,7 +68,7 @@
 {"file": "vllm-25_06_24-20_16_54.log", "index": 81, "text": "<b0:ac:82:47:d0>用户输入：\n\\n后退三十厘米。"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 97, "text": "<b0:ac:82:47:d0>用户输入：\n\\n襄阳向右旋转三十五度。"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 142, "text": "<b0:ac:82:47:d0>用户输入：\n\\n小小"}
-{"file": "vllm-25_06_24-20_16_54.log", "index": 158, "text": "<b0:ac:82:47:d0:1d>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotLinearMotion\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
+{"file": "vllm-25_06_24-20_16_54.log", "index": 158, "text": "<b0:ac:82:47:d0>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotLinearMotion\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 179, "text": "<b0:ac:82:47:d0>用户输入：\n\\n怎么样？"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 193, "text": "<b0:ac:82:47:d0>用户输入：\n\\n喂操。"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 213, "text": "<b0:ac:82:47:d0>用户输入：\n\\n巡检。"}
@@ -147,7 +147,7 @@
 {"file": "vllm-25_06_24-20_16_54.log", "index": 1463, "text": "<b0:ac:82:47:d0>用户输入：\n\\n你们馒头啊。"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 1477, "text": "<b0:ac:82:47:d0>用户输入：\n\\n他只为一个笑话换一个。"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 1492, "text": "<b0:ac:82:47:d0>用户输入：\n\\n你会吗？"}
-{"file": "vllm-25_06_24-20_16_54.log", "index": 1505, "text": "<b0:ac:82:47:d0:1d>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotSearchPeople\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
+{"file": "vllm-25_06_24-20_16_54.log", "index": 1505, "text": "<b0:ac:82:47:d0>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotSearchPeople\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 1521, "text": "<b0:ac:82:47:d0>用户输入：\n\\n知道了没？"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 1553, "text": "<b0:ac:82:47:d0>用户输入：\n\\n爸爸"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 1591, "text": "<b0:ac:82:47:d0>用户输入：\n\\n丢了吧？"}
@@ -199,7 +199,7 @@
 {"file": "vllm-25_06_24-20_16_54.log", "index": 2802, "text": "<b0:ac:82:47:d0>用户输入：\n\\n嗯关机他有"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 2861, "text": "<b0:ac:82:47:d0>用户输入：\n\\n帮我建个图。"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 2975, "text": "<b0:ac:82:47:d0>用户输入：\n\\n谁给他吧？"}
-{"file": "vllm-25_06_24-20_16_54.log", "index": 3010, "text": "<b0:ac:82:47:d0:1d>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotReturnToStation\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
+{"file": "vllm-25_06_24-20_16_54.log", "index": 3010, "text": "<b0:ac:82:47:d0>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotReturnToStation\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 3033, "text": "<b0:ac:82:47:d0>用户输入：\n\\n到这边我"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 3058, "text": "<b0:ac:82:47:d0>用户输入：\n\\n换个的歌"}
 {"file": "vllm-25_06_24-20_16_54.log", "index": 3071, "text": "<b0:ac:82:47:d0>用户输入：\n\\n阿法为什么可以看？"}
@@ -426,7 +426,7 @@
 {"file": "vllm-25_05_28-15_52_24.log", "index": 2648, "text": "<b0:ac:82:47:d0>用户输入：\n\\n那个小小语啊，你用完了。"}
 {"file": "vllm-25_05_28-15_52_24.log", "index": 2668, "text": "<b0:ac:82:47:d0>用户输入：\n\\n再往前。"}
 {"file": "vllm-25_07_08-17_49_41.log", "index": 69, "text": "<b0:ac:82:47:d0>用户输入：\n\\n对我改的改的北"}
-{"file": "vllm-25_07_08-17_49_41.log", "index": 111, "text": "<b0:ac:82:47:d0:1d>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"11\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
+{"file": "vllm-25_07_08-17_49_41.log", "index": 111, "text": "<b0:ac:82:47:d0>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"11\",\"task_state\": \"失败\",\"task_subState\": \"默认\"}]}"}
 {"file": "vllm-25_07_08-17_49_41.log", "index": 134, "text": "<b0:ac:82:47:d0>用户输入：\n\\n我要热吗"}
 {"file": "vllm-25_07_08-17_49_41.log", "index": 159, "text": "<b0:ac:82:47:d0>用户输入：\n\\n他好像完全没有聊天那什么的功能啊"}
 {"file": "vllm-25_07_08-17_49_41.log", "index": 172, "text": "<b0:ac:82:47:d0>用户输入：\n\\n旋转九十度"}
@@ -619,8 +619,8 @@
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3705, "text": "<b0:ac:82:47:d0>用户输入：\n\\nHere is the result of mcp tool use `robotLinearMotion`:\\n[{\"type\":\"text\",\"text\":\"{\\\\\"deviceId\\\\\":null,\\\\\"taskType\\\\\":null,\\\\\"status\\\\\":\\\\\"下发失败\\\\\",\\\\\"errorMessage\\\\\":\\\\\"distance只能为数字并且不能为零\\\\\"}\"}]"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3744, "text": "<b0:ac:82:47:d0>用户输入：\n\\n再小就小了不行"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3765, "text": "<b0:ac:82:47:d0>用户输入：\n\\n左转10度"}
-{"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3836, "text": "<b0:ac:82:47:d0>用户输入：\n\\n设备 b0:ac:82:47:d0:1d ，左转20 度再转回来"}
-{"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3864, "text": "<b0:ac:82:47:d0>用户输入：\n\\n设备 b0:ac:82:47:d0:1d ,左转2度再转回来"}
+{"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3836, "text": "<b0:ac:82:47:d0>用户输入：\n\\n设备 b0:ac:82:47:d0 ，左转20 度再转回来"}
+{"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3864, "text": "<b0:ac:82:47:d0>用户输入：\n\\n设备 b0:ac:82:47:d0 ,左转2度再转回来"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 3994, "text": "<b0:ac:82:47:d0>用户输入：\n\\n带我去洗衣机旁"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 4120, "text": "<b0:ac:82:47:d0>用户输入：\n\\n多少度"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 4184, "text": "<b0:ac:82:47:d0>用户输入：\n\\n转一百八十度"}
@@ -648,7 +648,7 @@
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5327, "text": "<b0:ac:82:47:d0>用户输入：\n\\n去卫生间巡检"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5393, "text": "<b0:ac:82:47:d0>用户输入：\n\\n领我去沙发"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5472, "text": "<b0:ac:82:47:d0>用户输入：\n\\n转十圈"}
-{"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5518, "text": "<b0:ac:82:47:d0:1d>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotCreateMap\",\"task_state\": \"进行中\",\"task_subState\": \"成功\"}]}"}
+{"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5518, "text": "<b0:ac:82:47:d0>底盘上报：\n{\"reMsg_type\": \"任务状态信息\",\"tasks\": [{\"to_say\": \"\",\"task_type\": \"robotCreateMap\",\"task_state\": \"进行中\",\"task_subState\": \"成功\"}]}"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5581, "text": "<b0:ac:82:47:d0>用户输入：\n\\n带我去沙发了"}
 {"file": "vllm-25_07_18-14_17_14-32B.log", "index": 5699, "text": "<b0:ac:82:47:d0>用户输入：\n\\ngot my shoes"}
 {"file": "vllm-25_08_18-18_39_03-32B.log", "index": 18, "text": "<b0:ac:82:47:d0>用户输入：\n\\n去把大家做"}
