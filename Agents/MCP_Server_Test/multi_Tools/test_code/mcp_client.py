@@ -543,10 +543,10 @@ class LocalMCPClient:
 
 
 async def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("prompt_path", help="系统提示词文件 prompt_tools.txt")
-    ap.add_argument("session_length", type=int, default=60, help="单次会话的长度（默认60）")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("prompt_path", type=str, help="系统提示词文件 prompt_tools.txt")
+    parser.add_argument("--session_length", type=int, default=60, help="单次会话的长度（默认60）")
+    args = parser.parse_args()
     
     if len(sys.argv) < 2:
         logger.info("Usage: python client.py <path_to_prompt> [OPtional <session_length>]")
