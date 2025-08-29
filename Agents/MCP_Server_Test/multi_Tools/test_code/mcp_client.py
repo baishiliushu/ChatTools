@@ -18,6 +18,7 @@ import httpx
 from urllib.parse import urlparse
 import datetime
 import time
+import argparse
 
 # Load .env
 load_dotenv()
@@ -62,7 +63,7 @@ logger = logging.getLogger("terminal_client")
 
 
 class LocalMCPClient:
-    def __init__(self, prompt_file_path = "prompt.txt"):
+    def __init__(self, prompt_file_path = "prompt.txt", session_length = 10):
         self.exit_stack = AsyncExitStack()
         self.vllm_api_url = os.getenv("VLLM_API_URL", "http://192.168.50.208:8000/v1/chat/completions")
         self.model_name = os.getenv("MODEL_NAME", "QwQ-32B-AWQ")
@@ -85,6 +86,8 @@ class LocalMCPClient:
             "设备indemind, 先去卧室找一下垃圾桶，找到后再去客厅找电视，然后回桩"
         ]
         self.mcp_mode = os.getenv("MCP_MODE_BY_URL", "mcp_server.py")  # stdio, sse, shttp
+        self.history_length = session_length if session_length > 4 and session_length < 120 else 60
+        logger.info(f"client INITed -> mode {self.mcp_mode} ; history_limit {self.history_length}")
 
     async def initialize_http_session(self):
         if not self.http_session:
@@ -164,12 +167,15 @@ class LocalMCPClient:
                         result = await response.json()
                         logger.info(f"🔍 原始 vLLM 响应:\n{json.dumps(result, indent=2, ensure_ascii=False)}\n")
                         time_end_f = time.time()
-                        logger.info("获取原始vLLM 响应 time cost: {:.2f} s".format(time_end_f - time_start_f))
+                        
                         if result.get("choices") or result is not None:
                             choice = result["choices"][0]
                             ret["tool_calls"] = choice["message"]["tool_calls"]
                             ret["content"] = choice["message"]["content"]
-                                                   
+                        log_key_word = " "
+                        if ret["tool_calls"]:
+                            log_key_word = "tool "
+                        logger.info("获取原始vLLM 响应 {}time cost: {:.2f} s".format(log_key_word, time_end_f - time_start_f))                      
                         return ret
                     else:
                         error_text = await response.text()
@@ -358,7 +364,7 @@ class LocalMCPClient:
         if not self.http_session:
             await self.initialize_http_session()
         querrys = query.split("c+++")
-        if query.startswith("c+++") or len(self.chat_history) > 60:
+        if query.startswith("c+++") or len(self.chat_history) > self.history_length:
             #self.chat_history = []
             await self.clear_chat_history()
         query = querrys[-1]
@@ -537,12 +543,17 @@ class LocalMCPClient:
 
 
 async def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("prompt_path", help="系统提示词文件 prompt_tools.txt")
+    ap.add_argument("session_length", type=int, default=60, help="单次会话的长度（默认60）")
+    args = ap.parse_args()
+    
     if len(sys.argv) < 2:
-        logger.info("Usage: python client.py <path_to_prompt>")
+        logger.info("Usage: python client.py <path_to_prompt> [OPtional <session_length>]")
         sys.exit(1)
 
-    prompt_txt_path = sys.argv[1]
-    client = LocalMCPClient(prompt_txt_path)
+    prompt_txt_path = args.prompt_path
+    client = LocalMCPClient(prompt_txt_path, args.session_length)
     try:
         await client.initialize_http_session()
       

@@ -32,4 +32,19 @@ python mcp_client.py prompt_tools.txt 2>&1 | tee -a "../../../Logs/$(date +"%y_%
 - batch_time_test
 你:ttt
 
+`  
+
+### 统计命令  
+`  
+ #25_08_29-14_36_44-batch-32B.log Logs/25_08_29-14_17_04-batch-32B.log  1.72673
+file_name="25_08_29-14_36_44-batch-32B.log"  
+
+cat ${file_name} | grep "tool time " | wc -l
+
+cat ${file_name} | grep "tool time" | awk -F'cost: ' '{print $2}' | awk -F' s' '{print $1}' | awk '{sum+=$1} END {print "", sum/NR}'
+
+cat ${file_name} | grep "tool time" | awk -F'cost: ' '{print $2}' | awk -F' s' '{print $1}' | awk 'BEGIN {max = 0} {if ($1+0>max+0) max=$1 fi} END {print "Max=", max}'
+cat ${file_name} | grep "tool time" | awk -F'cost: ' '{print $2}' | awk -F' s' '{print $1}' | awk 'BEGIN{min = 65536}{if ($1+0<min+0) min=$1 fi}END{print "Min=", min}'
+cat ${file_name} | grep "tool time"| awk -F'cost: ' '{time = $2; sub(/ s.*/, "", time); if(time > 1.8) print $0}' | wc -l
+
 `
